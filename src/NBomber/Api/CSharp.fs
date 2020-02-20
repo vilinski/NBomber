@@ -8,6 +8,7 @@ open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
 open NBomber
+open NBomber.Domain
 open NBomber.Contracts
 open NBomber.Configuration
 
@@ -46,6 +47,10 @@ type ScenarioBuilder =
     /// Creates scenario with steps which will be executed sequentially.
     static member CreateScenario(name: string, steps: IStep[]) =
         FSharp.Scenario.create name (Seq.toList steps)
+
+    [<Extension>]
+    static member WithFeed (scenario: Scenario, feed: IFeed<'T>) =
+        { scenario with Feed = feed |> Domain.Feed.map box }
 
     [<Extension>]
     static member WithTestInit(scenario: Scenario, initFunc: Func<ScenarioContext,Task>) =
@@ -121,3 +126,35 @@ type NBomberRunner =
         match FSharp.NBomberRunner.runTest(context) with
         | Ok stats  -> stats
         | Error msg -> failwith msg
+
+[<Extension>]
+type Feed =
+
+    /// Empty data feed
+    static member Empty =
+        Feed.empty
+
+    /// Generates values from specified sequence
+    static member Sequence(name, xs) =
+        Feed.ofSeq name xs
+
+    /// Generates values from shuffled collection
+    static member Shuffle(name, xs) =
+        Feed.shuffle name xs
+
+    /// Circular iterate over the specified collection
+    static member Circular(name, xs) =
+        Feed.circular name xs
+
+    /// Read a line from file path
+    static member FromFile(name, path) =
+        Feed.fromFile name path
+
+    /// Deserialize values from json array saved in the file
+    static member FromJson(name, path) =
+        Feed.fromJson name path
+
+    /// Convert values
+    [<Extension>]
+    static member Select (feed: IFeed<'T>, f: Func<'T,'b>) =
+        Feed.map f.Invoke feed

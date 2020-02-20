@@ -24,6 +24,7 @@ let scenario = {
     ScenarioName = "1"
     TestInit = None
     TestClean = None
+    Feed = NBomber.Domain.Feed.empty
     Steps = Array.empty
     ConcurrentCopies = 1
     WarmUpDuration = TimeSpan.FromSeconds(10.)

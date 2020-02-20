@@ -9,6 +9,7 @@ open Serilog
 open Microsoft.Extensions.Configuration
 
 open NBomber.Configuration
+open NBomber.Extensions
 
 type Response = {
     Payload: obj
@@ -64,11 +65,18 @@ type Statistics = {
 
 type IConnectionPool<'TConnection> = interface end
 
+/// Data provider
+type IFeed<'T> =
+    /// Feed name, which is also the key of step data dictionary
+    abstract member Name: string with get
+    /// Gets data for the next step
+    abstract member GetNext: unit -> Dict<string,'T>
+
 type StepContext<'TConnection> = {
     CorrelationId: string
     CancellationToken: CancellationToken
     Connection: 'TConnection
-    mutable Data: obj
+    Data: Dict<string,obj>
     Logger: ILogger
 }
 
@@ -86,6 +94,7 @@ type Scenario = {
     ScenarioName: string
     TestInit: (ScenarioContext -> Task) option
     TestClean: (ScenarioContext -> Task) option
+    Feed: IFeed<obj>
     Steps: IStep[]
     ConcurrentCopies: int
     WarmUpDuration: TimeSpan

@@ -114,10 +114,15 @@ module Scenario =
         { ScenarioName = name
           TestInit = Unchecked.defaultof<_>
           TestClean = Unchecked.defaultof<_>
+          Feed = Feed.empty
           Steps = Seq.toArray(steps)
           ConcurrentCopies = Constants.DefaultConcurrentCopies
           WarmUpDuration = TimeSpan.FromSeconds(Constants.DefaultWarmUpDurationInSec)
           Duration = TimeSpan.FromSeconds(Constants.DefaultScenarioDurationInSec) }
+
+
+    let withFeed (feed: IFeed<'T>) (scenario: Contracts.Scenario) =
+       { scenario with Feed = feed |> Feed.map box  }
 
     let withTestInit (initFunc: ScenarioContext -> Task<unit>) (scenario: Contracts.Scenario) =
         { scenario with TestInit = Some(fun token -> initFunc(token) :> Task) }
@@ -187,3 +192,20 @@ module NBomberRunner =
 
     let internal runWithResult (context: TestContext) =
         NBomberRunner.runAs(Process, context)
+
+/// Data feed
+module Feed =
+    /// Empty data feed
+    let empty = Feed.empty
+    /// Generates values from specified sequence
+    let ofSeq = Feed.ofSeq
+    /// Generates values from shuffled collection
+    let shuffle = Feed.shuffle
+    /// Circulate iterate over the specified collection
+    let circular = Feed.circular
+    /// Read a line from file path
+    let fromFile = Feed.fromFile
+    /// json file feed
+    let fromJson = Feed.fromJson
+    /// Converts values
+    let map = Feed.map
