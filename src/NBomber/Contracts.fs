@@ -11,6 +11,12 @@ open Microsoft.Extensions.Configuration
 open NBomber.Configuration
 open NBomber.Extensions
 
+type CorrelationId = {
+    Id: string
+    ScenarioName: string
+    CopyNumber: int
+}
+
 type Response = {
     Payload: obj
     SizeBytes: int
@@ -63,20 +69,22 @@ type Statistics = {
     NodeInfo: NodeInfo
 }
 
-type IConnectionPool<'TConnection> = interface end
+type IConnectionPool<'TConnection> =
+    abstract PoolName: string
 
-/// Data provider
-type IFeed<'T> =
-    /// Feed name, which is also the key of step data dictionary
-    abstract member Name: string with get
-    /// Gets data for the next step
-    abstract member GetNext: unit -> Dict<string,'T>
+type IFeedProvider<'TFeedItem> =
+    abstract GetAllItems: unit -> 'TFeedItem[]
 
-type StepContext<'TConnection> = {
-    CorrelationId: string
+type IFeed<'TFeedItem> =
+    abstract Name: string
+    abstract GetNextItem: correlationId:CorrelationId * stepData:Dict<string,obj> -> 'TFeedItem
+
+type StepContext<'TConnection,'TFeedItem> = {
+    CorrelationId: CorrelationId
     CancellationToken: CancellationToken
     Connection: 'TConnection
     Data: Dict<string,obj>
+    FeedItem: 'TFeedItem
     Logger: ILogger
 }
 
@@ -94,7 +102,6 @@ type Scenario = {
     ScenarioName: string
     TestInit: (ScenarioContext -> Task) option
     TestClean: (ScenarioContext -> Task) option
-    Feed: IFeed<obj>
     Steps: IStep[]
     ConcurrentCopies: int
     WarmUpDuration: TimeSpan

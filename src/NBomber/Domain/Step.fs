@@ -13,33 +13,45 @@ open NBomber.Extensions
 open NBomber.Contracts
 open NBomber.Domain
 
-let setStepContext (correlationId: string)
-                   (feedData: Dict<string,obj>)
-                   (actorIndex: int)
-                   (cancelToken: CancellationToken)
-                   (logger: ILogger)
-                   (step: Step) =
+let toUntypedExec (execute: StepContext<'TConnection,'TFeedItem> -> Task<Response>) =
+    fun (context: UntypedStepContext) ->
 
-    let getConnection (pool: ConnectionPool<obj>) =
-        match pool.ConnectionsCount with
-        | Some v -> pool.AliveConnections.[actorIndex % v]
-        | None   -> pool.AliveConnections.[actorIndex]
+        let typedContext = {
+            StepContext.CorrelationId = context.CorrelationId
+            CancellationToken = context.CancellationToken
+            Connection = context.Connection :?> 'TConnection
+            Data = context.Data
+            FeedItem = context.FeedItem :?> 'TFeedItem
+            Logger = context.Logger
+        }
+
+        execute(typedContext)
+
+
+let setStepContext (logger: ILogger, correlationId: CorrelationId,
+                    cancelToken: CancellationToken, step: Step, data: Dict<string,obj>) =
+
+    let getConnection (pool: UntypedConnectionPool) =
+        if pool.AliveConnections.Length > 0 then
+            let index = correlationId.CopyNumber % pool.AliveConnections.Length
+            pool.AliveConnections.[index]
+        else
+            () :> obj
 
     let connection = getConnection(step.ConnectionPool)
     let context = { CorrelationId = correlationId
                     CancellationToken = cancelToken
                     Connection = connection
-                    Data = feedData
+                    Data = data
+                    FeedItem = step.Feed.GetNextItem(correlationId, data)
                     Logger = logger }
 
-    { step with CurrentContext = Some context }
+    { step with Context = Some context }
 
-let execStep (step: Step, data: Dict<string,obj>, globalTimer: Stopwatch) = task {
+let execStep (step: Step, globalTimer: Stopwatch) = task {
     let startTime = globalTimer.Elapsed.TotalMilliseconds
     try
-        step.CurrentContext.Value.Data |> Dict.fillFrom data
-        let! resp = step.Execute(step.CurrentContext.Value)
-
+        let! resp = step.Execute(step.Context.Value)
         let endTime = globalTimer.Elapsed.TotalMilliseconds
         let latency = int(endTime - startTime)
         return { Response = resp; StartTimeMs = startTime; LatencyMs = latency }
@@ -53,13 +65,13 @@ let execStep (step: Step, data: Dict<string,obj>, globalTimer: Stopwatch) = task
             return { Response = Response.Fail(ex); StartTimeMs = startTime; LatencyMs = int latency }
 }
 
-let execSteps (logger: ILogger,
+let execSteps (logger: ILogger, correlationId: CorrelationId,
                steps: Step[],
                responses: ResizeArray<ResizeArray<StepResponse>>,
-               cancelToken: FastCancellationToken,
+               cancelToken: CancellationToken,
                globalTimer: Stopwatch) = task {
 
-    let data = dict []
+    let data = Dict.empty
     let mutable skipStep = false
     let mutable stepIndex = 0
     let resourcesToDispose = ResizeArray<IDisposable>(steps.Length)
@@ -69,26 +81,26 @@ let execSteps (logger: ILogger,
             try rs.Dispose()
             with _ -> ()
 
-    for st in steps do
-        if not skipStep && not cancelToken.ShouldCancel then
+    for s in steps do
+        if not skipStep && not cancelToken.IsCancellationRequested then
 
-            for i = 1 to st.RepeatCount do
-                let! response = execStep(st, data, globalTimer)
+            for i = 1 to s.RepeatCount do
+                let step = setStepContext(logger, correlationId, cancelToken, s, data)
+                let! response = execStep(step, globalTimer)
 
                 if response.Response.Payload :? IDisposable then
                     resourcesToDispose.Add(response.Response.Payload :?> IDisposable)
 
-                if not cancelToken.ShouldCancel && not st.DoNotTrack then
+                if not cancelToken.IsCancellationRequested && not step.DoNotTrack then
                     responses.[stepIndex].Add(response)
 
-                if st.RepeatCount = i then
+                if step.RepeatCount = i then
                     if response.Response.Exception.IsNone then
                         stepIndex <- stepIndex + 1
-                        data.["previous"] <- response.Response.Payload
+                        data.[Constants.StepResponseKey] <- response.Response.Payload
                     else
-                        logger.Error(response.Response.Exception.Value, "step '{Step}' is failed. ", st.StepName)
+                        logger.Error(response.Response.Exception.Value, "step '{Step}' is failed. ", step.StepName)
                         skipStep <- true
-
     cleanResources()
 }
 

@@ -15,8 +15,8 @@ namespace CSharp.Examples.Cluster
             var influxDb = new InfluxDBSink(url: "http://localhost:8086", dbName: "default");
 
             NBomberRunner.RegisterScenarios(
-                    SimpleHttpScenario.Create(),
-                    MqttReqResponseScenario.Create()
+                    SimpleHttpScenario.Create()
+                    //MqttReqResponseScenario.Create()
                 )
                 .WithReportingSinks(new[] { influxDb }, sendStatsInterval: TimeSpan.FromSeconds(20))
                 .LoadInfraConfig("infra_config.json")

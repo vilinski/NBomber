@@ -1,15 +1,10 @@
 ﻿namespace NBomber.Extensions
 
-open System
 open System.Collections.Concurrent
-open System.Threading
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
 
-open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
-
-open NBomber.Contracts
 
 [<Extension>]
 type StringExtensions() =

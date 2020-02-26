@@ -13,30 +13,56 @@ open NBomber.Contracts
 open NBomber.Configuration
 
 type ConnectionPool =
-    static member Create<'TConnection>(name: string, openConnection: Func<'TConnection>, [<Optional;DefaultParameterValue(null:obj)>] closeConnection: Action<'TConnection>, [<Optional;DefaultParameterValue(0:int)>] connectionsCount: int) =
-        let close = if isNull closeConnection then (new Action<'TConnection>(ignore))
+
+    static member Create<'TConnection>(name: string,
+                                       connectionsCount: int,
+                                       openConnection: Func<'TConnection>,
+                                       [<Optional;DefaultParameterValue(null:obj)>] closeConnection: Action<'TConnection>) =
+
+        let close = if isNull closeConnection then (Action<'TConnection>(ignore))
                     else closeConnection
 
-        if connectionsCount = 0 then
-            FSharp.ConnectionPool.create(name, openConnection.Invoke, close.Invoke)
-        else
-            FSharp.ConnectionPool.create(name, openConnection.Invoke, close.Invoke, connectionsCount)
+        FSharp.ConnectionPool.create(name, connectionsCount, openConnection.Invoke, close.Invoke)
 
-    static member None = FSharp.ConnectionPool.none
+
+    static member Empty = FSharp.ConnectionPool.empty
 
 type Step =
-    static member Create(name: string,
-                         execute: Func<StepContext<'TConnection>,Task<Response>>,
-                         connectionPool: IConnectionPool<'TConnection>,
-                         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
-                         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
-        FSharp.Step.create(name, connectionPool, execute.Invoke, repeatCount, doNotTrack)
+
+    static member Create<'TConnection,'TFeedItem>
+        (name: string,
+         connectionPool: IConnectionPool<'TConnection>,
+         feed: IFeed<'TFeedItem>,
+         execute: Func<StepContext<'TConnection,'TFeedItem>,Task<Response>>,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+
+        FSharp.Step.create(name, connectionPool, feed, execute.Invoke, repeatCount, doNotTrack)
+
+    static member Create<'TConnection>
+        (name: string,
+         connectionPool: IConnectionPool<'TConnection>,
+         execute: Func<StepContext<'TConnection,unit>,Task<Response>>,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+
+        Step.Create(name, connectionPool, Feed.empty, execute, repeatCount, doNotTrack)
+
+    static member Create<'TFeedItem>
+        (name: string,
+         feed: IFeed<'TFeedItem>,
+         execute: Func<StepContext<unit,'TFeedItem>,Task<Response>>,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+
+        Step.Create(name, ConnectionPool.Empty, feed, execute, repeatCount, doNotTrack)
 
     static member Create(name: string,
-                         execute: Func<StepContext<unit>,Task<Response>>,
+                         execute: Func<StepContext<unit,unit>,Task<Response>>,
                          [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
                          [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
-        Step.Create(name, execute, ConnectionPool.None, repeatCount, doNotTrack)
+
+        Step.Create(name, ConnectionPool.Empty, Feed.empty, execute, repeatCount, doNotTrack)
 
     static member CreatePause(duration: TimeSpan) =
         FSharp.Step.createPause(duration)
@@ -47,10 +73,6 @@ type ScenarioBuilder =
     /// Creates scenario with steps which will be executed sequentially.
     static member CreateScenario(name: string, steps: IStep[]) =
         FSharp.Scenario.create name (Seq.toList steps)
-
-    [<Extension>]
-    static member WithFeed (scenario: Scenario, feed: IFeed<'T>) =
-        { scenario with Feed = feed |> Domain.Feed.map box }
 
     [<Extension>]
     static member WithTestInit(scenario: Scenario, initFunc: Func<ScenarioContext,Task>) =
@@ -126,35 +148,3 @@ type NBomberRunner =
         match FSharp.NBomberRunner.runTest(context) with
         | Ok stats  -> stats
         | Error msg -> failwith msg
-
-[<Extension>]
-type Feed =
-
-    /// Empty data feed
-    static member Empty =
-        Feed.empty
-
-    /// Generates values from specified sequence
-    static member Sequence(name, xs) =
-        Feed.ofSeq name xs
-
-    /// Generates values from shuffled collection
-    static member Shuffle(name, xs) =
-        Feed.shuffle name xs
-
-    /// Circular iterate over the specified collection
-    static member Circular(name, xs) =
-        Feed.circular name xs
-
-    /// Read a line from file path
-    static member FromFile(name, path) =
-        Feed.fromFile name path
-
-    /// Deserialize values from json array saved in the file
-    static member FromJson(name, path) =
-        Feed.fromJson name path
-
-    /// Convert values
-    [<Extension>]
-    static member Select (feed: IFeed<'T>, f: Func<'T,'b>) =
-        Feed.map f.Invoke feed

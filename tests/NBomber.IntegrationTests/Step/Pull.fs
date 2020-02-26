@@ -154,7 +154,7 @@ let ``context.Data should store any payload data from latest step.Response`` () 
 
     let mutable counter = 0
     let mutable step2Counter = 0
-    let mutable counterFromStep1 = null
+    let mutable counterFromStep1 = 0
 
     let step1 = Step.create("step 1", fun context -> task {
         counter <- counter + 1
@@ -164,7 +164,7 @@ let ``context.Data should store any payload data from latest step.Response`` () 
 
     let step2 = Step.create("step 2", fun context -> task {
         step2Counter <- counter
-        counterFromStep1 <- context.Data
+        counterFromStep1 <- context.Data.[NBomber.Domain.Constants.StepResponseKey] :?> int
         do! Task.Delay(TimeSpan.FromSeconds(0.1))
         return Response.Ok()
     })
@@ -179,7 +179,7 @@ let ``context.Data should store any payload data from latest step.Response`` () 
     |> NBomberRunner.runTest
     |> ignore
 
-    Assert.Equal(Convert.ToInt32(counterFromStep1), step2Counter)
+    test <@ counterFromStep1 = step2Counter @>
 
 [<Fact>]
 let ``Step with DoNotTrack = true should has empty stats and not be printed`` () =

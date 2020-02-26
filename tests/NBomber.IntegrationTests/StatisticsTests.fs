@@ -41,7 +41,6 @@ let private scenario = {
     ScenarioName = "Scenario1"
     TestInit = None
     TestClean = None
-    Feed = Feed.empty
     Steps = Array.empty
     ConcurrentCopies = 1
     CorrelationIds = Array.empty

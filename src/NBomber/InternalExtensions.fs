@@ -6,8 +6,6 @@ open System.Threading.Tasks
 [<AutoOpen>]
 module internal Extensions =
 
-    type FastCancellationToken = { mutable ShouldCancel: bool }
-
     type Task<'T> with
         static member map f (m: Task<_>) =
             m.ContinueWith(fun (t: Task<_>) -> f t.Result)
@@ -54,6 +52,7 @@ module internal Extensions =
             strings |> Seq.map(sprintf "'%s'") |> String.concat(", ")
 
     module Array =
+
         /// Safe variant of `Array.min`
         let minOrDefault defaultValue array =
             if Array.isEmpty array then defaultValue
@@ -80,6 +79,7 @@ module internal Extensions =
                 let tmp = a.[x]
                 a.[x] <- a.[y]
                 a.[y] <- tmp
+
             let rand = Random()
             Array.iteri (fun i _ -> swap a i (rand.Next(i, Array.length a))) a
 
@@ -89,9 +89,9 @@ module internal Extensions =
             a' |> shuffleInPlace
             a'
 
-
     module Map =
-        let inline fromDictionary (dictionary) =
+
+        let inline ofDictionary (dictionary) =
             dictionary
             |> Seq.map (|KeyValue|)
             |> Map.ofSeq
@@ -99,17 +99,10 @@ module internal Extensions =
     type Dict<'k, 'v> = System.Collections.Generic.IDictionary<'k,'v>
 
     module Dict =
-        let isEmpty (dictionary: Dict<'K,'V>) =
-            dictionary.Count = 0
 
-        let mapValues (f: 'V1 -> 'V2) (dictionary: Dict<'K,'V1>) =
-            dictionary
-            |> Seq.map (fun (KeyValue(k,v)) -> k, f v)
-            |> dict
-
-        let fillFrom (other: Dict<'K,'T>) (dictionary: Dict<'K,'T>) =
-            for KeyValue(k,v) in other do
-                dictionary.[k] <- v
+        let inline empty<'K,'V when 'K: equality> =
+            System.Collections.Generic.Dictionary<'K,'V>()
+            :> Dict<'K,'V>
 
 namespace NBomber.Extensions.Operator
 

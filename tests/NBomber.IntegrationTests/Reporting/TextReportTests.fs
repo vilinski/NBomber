@@ -1,4 +1,4 @@
-module NBomber.IntegrationTests.Reporting.TextReportTests
+module Tests.TextReportTests
 
 open System
 open Xunit

@@ -1,7 +1,6 @@
 ﻿module internal NBomber.DomainServices.ScenarioRunner
 
 open System
-open System.Collections.Generic
 open System.Diagnostics
 open System.Threading
 open System.Threading.Tasks
@@ -9,16 +8,15 @@ open System.Threading.Tasks
 open Serilog
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
+open NBomber.Contracts
 open NBomber.Extensions
 open NBomber.Domain
 open NBomber.Domain.Statistics
 
 type ScenarioActor(logger: ILogger,
-                   actorIndex: int,
-                   correlationId: string,
+                   correlationId: CorrelationId,
                    scenario: Scenario,
                    scenarioTimer: Stopwatch,
-                   fastCancelToken: FastCancellationToken,
                    cancelToken: CancellationToken) =
 
     let allScnResponses = ResizeArray<ResizeArray<StepResponse>>(scenario.Steps.Length)
@@ -29,11 +27,7 @@ type ScenarioActor(logger: ILogger,
 
     member x.ExecSteps() = task {
         working <- true
-        let feedData = scenario.Feed.GetNext()
-        let steps =
-            scenario.Steps
-            |> Array.map(Step.setStepContext correlationId feedData actorIndex cancelToken logger)
-        do! Step.execSteps(logger, steps, allScnResponses, fastCancelToken, scenarioTimer)
+        do! Step.execSteps(logger, correlationId, scenario.Steps, allScnResponses, cancelToken, scenarioTimer)
         working <- false
     }
 
@@ -54,7 +48,7 @@ type ActorTask = {
     mutable Task: Task<unit>
 }
 
-type ScenarioScheduler(allActors: ScenarioActor[], fastCancelToken: FastCancellationToken) =
+type ScenarioScheduler(allActors: ScenarioActor[], cancelToken: CancellationTokenSource) =
 
     let threadCount = Environment.ProcessorCount * 2
 
@@ -64,7 +58,7 @@ type ScenarioScheduler(allActors: ScenarioActor[], fastCancelToken: FastCancella
         else result + 1
 
     let startActorsTasks (actorsBulk: ScenarioActor[]) =
-        let actorsTasks = Dictionary<ActorTaskId, ActorTask>()
+        let actorsTasks = Dict.empty<ActorTaskId, ActorTask>
 
         actorsBulk
         |> Array.map(fun x -> { Actor = x; Task = x.ExecSteps() })
@@ -79,7 +73,7 @@ type ScenarioScheduler(allActors: ScenarioActor[], fastCancelToken: FastCancella
         task {
             do! Task.Yield()
 
-            while not fastCancelToken.ShouldCancel do
+            while not cancelToken.IsCancellationRequested do
                 let! finishedTask = Task.WhenAny(actorsTasks.Values |> Seq.map(fun x -> x.Task))
 
                 let item = actorsTasks.[finishedTask.Id]
@@ -103,7 +97,6 @@ type ScenarioRunner(scenario: Scenario, logger: Serilog.ILogger) =
 
     let [<Literal>] TryCount = 20
     let mutable curCancelToken = new CancellationTokenSource()
-    let curFastCancelToken = { ShouldCancel = false }
     let mutable curActors = Array.empty<ScenarioActor>
     let mutable curJob: Task option = None
 
@@ -126,25 +119,22 @@ type ScenarioRunner(scenario: Scenario, logger: Serilog.ILogger) =
 
     let stop (job: Task option, actors: ScenarioActor[]) = task {
         if not curCancelToken.IsCancellationRequested then
-           curFastCancelToken.ShouldCancel <- true
            curCancelToken.Cancel()
 
            if job.IsSome then
                do! waitOnFinish(job.Value, actors)
 
            curCancelToken <- new CancellationTokenSource()
-           curFastCancelToken.ShouldCancel <- false
     }
 
-    let createActorsEnv (scenario, fastCancelToken: FastCancellationToken, cancelToken: CancellationTokenSource) =
+    let createActorsEnv (scenario, cancelToken: CancellationTokenSource) =
 
         let scenarioTimer = Stopwatch()
 
         let actors =
             scenario.CorrelationIds
-            |> Array.mapi(fun actorIndex correlationId ->
-                ScenarioActor(logger, actorIndex, correlationId, scenario, scenarioTimer,
-                              fastCancelToken, cancelToken.Token)
+            |> Array.map(fun correlationId ->
+                ScenarioActor(logger, correlationId, scenario, scenarioTimer, cancelToken.Token)
             )
 
         {| ScenarioTimer = scenarioTimer; Actors = actors |}
@@ -153,8 +143,8 @@ type ScenarioRunner(scenario: Scenario, logger: Serilog.ILogger) =
 
         do! stop(curJob, curActors)
 
-        let env = createActorsEnv(scenario, curFastCancelToken, curCancelToken)
-        let scheduler = ScenarioScheduler(env.Actors, curFastCancelToken)
+        let env = createActorsEnv(scenario, curCancelToken)
+        let scheduler = ScenarioScheduler(env.Actors, curCancelToken)
         env.ScenarioTimer.Start()
         let job = scheduler.Run()
 

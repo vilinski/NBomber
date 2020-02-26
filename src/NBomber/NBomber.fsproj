@@ -60,10 +60,12 @@
     <Compile Include="DomainServices\Cluster\Agent.fs" />
     <Compile Include="DomainServices\Cluster\Coordinator.fs" />
     <Compile Include="DomainServices\NBomberRunner.fs" />
+    <Compile Include="Api\Shared.fs" />
     <Compile Include="Api\FSharp.fs" />
     <Compile Include="Api\CSharp.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="15.0.0" />
     <PackageReference Include="FSharp.Json" Version="0.3.7" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.2.3" />
     <PackageReference Include="HdrHistogram" Version="2.5.0" />

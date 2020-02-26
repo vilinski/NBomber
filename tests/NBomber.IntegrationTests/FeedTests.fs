@@ -1,203 +1,104 @@
-module NBomber.IntegrationTests.FeedTests
+module Tests.FeedTests
 
-open System
-open FSharp.Control.Tasks.V2.ContextInsensitive
+open FsCheck
+open FsCheck.Xunit
 open Swensen.Unquote
-open Xunit
+
+open NBomber
 open NBomber.Domain
-open NBomber.Contracts
-open NBomber.Extensions
-open NBomber.FSharp
 
-[<Fact>]
-let ``Feed from array``() =
-    let xs = [| 0 .. 10 |]
-    let length = Array.length xs
-    let feed = Feed.ofSeq "test" xs
+[<Property>]
+let ``Feed.createCircular iterate over array sequentially``(length: int) =
 
-    let actual = Array.init length (fun _ -> feed.GetNext().["feed.test"])
-    test <@ actual
-            |> Array.pairwise
-            |> Array.forall(fun (a,b) -> a <> b) @>
-    test <@ actual
-            |> Array.zip xs
-            |> Array.forall (fun (a, b) -> a = b) @>
+    length > 2 ==> lazy
 
-[<Fact>]
-let ``Feed from list``() =
-    let xs = [ 0 .. 10 ]
-    let length = List.length xs
-    let feed = Feed.ofSeq "test" xs
+    let orderedList = [0 .. length - 1]
 
-    let actual = List.init length (fun _ -> feed.GetNext().["feed.test"])
-    test <@ actual
-            |> List.pairwise
-            |> List.forall(fun (a,b) -> a <> b) @>
-    test <@ actual
-            |> List.zip xs
-            |> List.forall (fun (a, b) -> a = b) @>
+    let feed = FeedData.fromSeq orderedList
+               |> Feed.createCircular "circular"
 
-[<Fact>]
-let ``Feed from infinite sequence``() =
-    let xs = Seq.initInfinite id
-    let feed = Feed.ofSeq "test" xs
+    let actual = List.init length (fun i ->
+        let correlationId = Scenario.createCorrelationId("test_scn", i)
+        feed.GetNextItem(correlationId, null)
+    )
 
-    let actual = List.init 10000 (fun _ -> feed.GetNext().["feed.test"])
-    test <@ actual
-            |> List.pairwise
-            |> List.forall(fun (a,b) -> a <> b) @>
-    test <@ actual
-            |> List.zip (xs |> Seq.truncate 10000 |> Seq.toList)
-            |> List.forall (fun (a, b) -> a = b) @>
+    test <@ actual = orderedList @>
 
-[<Fact>]
-let ``Circular feed from infinite sequence``() =
-    let xs = Seq.initInfinite id
-    let feed = Feed.circular "test" xs
+[<Property>]
+let ``Feed.createConstant returns next value from seq for the same correlationId``(length: int) =
 
-    let actual = List.init 10000 (fun _ -> feed.GetNext().["feed.test"])
-    test <@ actual
-            |> List.pairwise
-            |> List.forall(fun (a,b) -> a <> b) @>
-    test <@ actual
-            |> List.zip (xs |> Seq.truncate 10000 |> Seq.toList)
-            |> List.forall (fun (a, b) -> a = b) @>
+    length > 2 ==> lazy
 
-[<Fact>]
-let ``Circular feed from array``() =
-    let xs = [| 0 .. 10 |]
-    let length = 10 * Array.length xs
-    let feed = Feed.circular "test" xs
+    let orderedList = [0 .. length - 1]
+    let sameValues = orderedList |> List.map(fun i -> i, i)
 
-    let zs =
-        seq { while true do yield! xs }
-        |> Seq.truncate length
-        |> Seq.toArray
+    let feed = FeedData.fromSeq orderedList
+               |> Feed.createCircular "circular"
 
-    test <@ Array.init length (fun _ -> feed.GetNext().["feed.test"])
-            |> Array.zip zs
-            |> Array.forall (fun (a, b) -> a = b && 0 <= a && a <= 10) @>
+    let actual = List.init length (fun i ->
+        let correlationId = Scenario.createCorrelationId("test_scn", i)
+        feed.GetNextItem(correlationId, null), feed.GetNextItem(correlationId, null)
+    )
 
-[<Fact>]
-let ``Feed select from array feed``() =
-    let xs = [| 0 .. 10 |]
-    let length = 10 * Array.length xs
-    let f i = i + 1
-    let feed = Feed.circular "test" xs |> Feed.map f
+    test <@ actual <> sameValues @>
 
-    let zs =
-        seq { while true do yield! xs }
-        |> Seq.map f
-        |> Seq.truncate length
-        |> Seq.toArray
+[<Property>]
+let ``Feed.createConstant returns the same value for the same correlationId``(length: int) =
 
-    test <@ Array.init length (fun _ -> feed.GetNext().["feed.test"])
-            |> Array.zip zs
-            |> Array.forall (fun (a, b) -> a = b && 1 <= a && a <= 11) @>
+    length > 2 ==> lazy
 
-[<Fact>]
-let ``Empty feed throws no errors``() =
-    let xs = Seq.empty
+    let orderedList = [0 .. length - 1]
+    let sameValues = orderedList |> List.map(fun i -> i, i)
 
-    let emptyFeeds =
-        [| Feed.empty
-           Feed.circular "test" xs
-           Feed.ofSeq "ofSeq" xs
-           Feed.shuffle "shuffle" <| Array.ofSeq xs |]
+    let feed = FeedData.fromSeq orderedList
+               |> Feed.createConstant "constant"
 
-    test <@ emptyFeeds
-            |> Array.forall (fun feed ->
-                Array.init 100 (fun _ -> feed.GetNext())
-                |> Array.forall Dict.isEmpty )
-         @>
+    let actual = List.init length (fun i ->
+        let correlationId = Scenario.createCorrelationId("test_scn", i)
+        feed.GetNextItem(correlationId, null), feed.GetNextItem(correlationId, null)
+    )
 
-[<Fact>]
-let ``Feed values are same within one scenario``() =
-    let feed = Seq.initInfinite id |> Feed.ofSeq "int"
-    let sending1 = ref []
-    let sending2 = ref []
+    test <@ actual = sameValues @>
 
-    let step1 =
-        Step.create("step1", fun ctx -> task {
-            let j = ctx.Data.["feed.int"] :?> int
-            ctx.Logger.Information("feed {i}", j)
-            sending1 := j::!sending1
-            return Response.Ok()
-        })
+[<Property>]
+let ``Feed.createRandom returns the random numbers list for each full iteration``(numbers: int list) =
 
-    let step2 =
-        Step.create("step2", fun ctx -> task {
-            let k = ctx.Data.["feed.int"] :?> int
-            ctx.Logger.Information("feed {i}", k)
-            sending2 := k::!sending2
-            return Response.Ok()
-        })
+    numbers.Length > 100 ==> lazy
 
-    let scenario =
-        [step1;step2]
-        |> Scenario.create "feed test"
-        |> Scenario.withFeed feed
-        |> Scenario.withOutWarmUp
-        |> Scenario.withConcurrentCopies 1
-        |> Scenario.withDuration (TimeSpan.FromSeconds 10.0)
+    let length = List.length numbers
 
-    let stats =
-        NBomberRunner.registerScenarios [scenario]
-        |> NBomberRunner.runTest
+    let feed1 = FeedData.fromSeq numbers
+                |> Feed.createRandom "random"
 
-    match stats with
-    | Error err -> failwith err
-    | Ok stats ->
-        test <@ Array.length stats = 2 @>
-        test <@ stats.[0].FailCount = 0 @>
-        test <@ stats.[0].OkCount <> 0 @>
-        test <@ stats.[1].FailCount = 0 @>
-        test <@ stats.[1].OkCount <> 0 @> // TODO step 2 stats are empty ?!
+    let feed2 = FeedData.fromSeq numbers
+                |> Feed.createRandom "random"
 
-        let received1 = !sending1
-        let received2 = !sending2
-        test <@ List.length received1 = List.length received2 @>
+    let actual1 = List.init length (fun i ->
+        let correlationId = Scenario.createCorrelationId("test_scn", i)
+        feed1.GetNextItem(correlationId, null)
+    )
 
-        test <@ received1
-                |> List.zip received2
-                |> List.forall(fun (i1,i2) -> i1 = i2) @>
+    let actual2 = List.init length (fun i ->
+        let correlationId = Scenario.createCorrelationId("test_scn", i)
+        feed2.GetNextItem(correlationId, null)
+    )
 
-[<Fact>]
-let ``Feed values are ordered like in the feed source``() =
-    let feed = Seq.initInfinite id |> Feed.ofSeq "int"
-    let sending = ref []
-    let step =
-        Step.create("count feed data", fun ctx -> task {
-            let i = ctx.Data.["feed.int"] :?> int
-            ctx.Logger.Information("feed {i}", i)
-            sending := i::!sending
-            return Response.Ok()
-        })
+    test <@ actual1 <> actual2 @>
 
-    let scenario =
-        [step]
-        |> Scenario.create "feed test"
-        |> Scenario.withFeed feed
-        |> Scenario.withOutWarmUp
-        |> Scenario.withConcurrentCopies 1
-        |> Scenario.withDuration (TimeSpan.FromSeconds 10.0)
+[<Property>]
+let ``Feed provides infinite iteration``(numbers: int list, iterationTimes: uint32) =
 
-    let stats =
-        NBomberRunner.registerScenarios [scenario]
-        |> NBomberRunner.runTest
+    (numbers.Length > 0 && numbers.Length < 200 && iterationTimes > 0u && iterationTimes < 5000u ) ==> lazy
 
-    match stats with
-    | Error err -> failwith err
-    | Ok stats ->
-        test <@ Array.length stats = 1 @>
-        let sent = stats |> Array.head
-        test <@ sent.OkCount <> 0 @>
-        test <@ sent.FailCount = 0 @>
+    let data = FeedData.fromSeq numbers
 
-        let received = !sending
-        test <@ received |> List.isEmpty |> not @>
-        test <@ received |> List.length >= sent.OkCount @> // TODO actually should be equal ?
-        test <@ received
-                |> List.rev
-                |> List.mapi (fun i a -> i,a)
-                |> List.forall(fun (a,b) -> a = b) @>
+    let correlationId = Scenario.createCorrelationId("test_scn", numbers.Length)
+
+    let circular = data |> Feed.createCircular "circular"
+    let constant = data |> Feed.createConstant "constant"
+    let random   = data |> Feed.createRandom "random"
+
+    for i = 0 to int iterationTimes do
+        circular.GetNextItem(correlationId, null) |> ignore
+        constant.GetNextItem(correlationId, null) |> ignore
+        random.GetNextItem(correlationId, null) |> ignore

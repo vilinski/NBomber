@@ -2,8 +2,27 @@
 module internal NBomber.Domain.ConnectionPool
 
 open System
+open NBomber
+open NBomber.Domain
 
-let setConnectionPool (allPools: ConnectionPool<obj>[]) (step: Step) =
+let toUntypedPool (pool: Contracts.IConnectionPool<'TConnection>) =
+
+    let p = pool :?> ConnectionPool<'TConnection>
+
+    let newOpen = fun () -> p.OpenConnection() :> obj
+
+    let newClose =
+        match p.CloseConnection with
+        | Some func -> Some(fun (c: obj) -> func(c :?> 'TConnection))
+        | None      -> None
+
+    { PoolName = p.PoolName
+      OpenConnection = newOpen
+      CloseConnection = newClose
+      ConnectionsCount = p.ConnectionsCount
+      AliveConnections = Array.empty }
+
+let setConnectionPool (allPools: UntypedConnectionPool[]) (step: Step) =
     let findPool (poolName) =
         allPools |> Array.find(fun x -> x.PoolName = poolName)
 
@@ -14,19 +33,14 @@ let getDistinctPools (scenario: Scenario) =
     |> Array.map(fun x -> x.ConnectionPool)
     |> Array.distinct
 
-let getPoolCount (scenario: Scenario, pool: ConnectionPool<obj>) =
-    match pool.ConnectionsCount with
-    | Some v -> v
-    | None   -> scenario.ConcurrentCopies
-
 let init (scenario: Scenario,
           onStartedInitPool: (string * int) -> unit, // PoolName * ConnectionsCount
           onConnectionOpened: int -> unit,
           onFinishInitPool: string -> unit,
           logger: Serilog.ILogger) =
 
-    let initPool (pool: ConnectionPool<obj>) =
-        let connectionCount = getPoolCount(scenario, pool)
+    let initPool (pool: UntypedConnectionPool) =
+        let connectionCount = pool.ConnectionsCount
         logger.Information("initializing connection pool: '{0}', connections count '{1}'", pool.PoolName, connectionCount)
         logger.Information("opening connections...")
         onStartedInitPool(pool.PoolName, connectionCount)
@@ -49,7 +63,7 @@ let clean (scenario: Scenario, logger: Serilog.ILogger) =
     let invokeDispose (connection: obj) =
         if connection :? IDisposable then (connection :?> IDisposable).Dispose()
 
-    let closeConnections (pool: ConnectionPool<obj>) =
+    let closeConnections (pool: UntypedConnectionPool) =
         logger.Information("closing connections for connection pool: '{0}'", pool.PoolName)
 
         for connection in pool.AliveConnections do

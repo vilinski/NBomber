@@ -1,9 +1,9 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
+
+using NBomber;
 using NBomber.Contracts;
 using NBomber.CSharp;
-using Serilog;
 
 namespace CSharp.Examples
 {
@@ -11,34 +11,23 @@ namespace CSharp.Examples
     {
         public static void Run()
         {
-            var feed =
-                Feed
-                    .Circular("numbers", Enumerable.Range(0, 10))
-                    .Select(x => (x + 1) * 10)
-                    .Select(x => x.ToString());
+            var data = FeedData.FromSeq(new[] {1, 2, 3, 4, 5}).ShuffleData();
+            //var data = FeedData.FromJson<User>("users_feed_data.json");
+            //var data = FeedData.FromCsv<User>("users_feed_data.csv");
 
-            var step = Step.Create("step", async context =>
+            var feed = Feed.CreateCircular("numbers", data);
+            //var feed = Feed.CreateConstant("numbers", data);
+            //var feed = Feed.CreateRandom("numbers", data);
+
+            var step = Step.Create("step", feed, async context =>
             {
-                await Task.Delay(TimeSpan.FromSeconds(0.1));
-                // to access feed data use feed name as a key
-                var number = (string)context.Data["feed.numbers"];
-                context.Logger.Information("Data from feed: {number}", number);
+                await Task.Delay(TimeSpan.FromSeconds(1));
+
+                context.Logger.Information("Data from feed: {FeedItem}", context.FeedItem);
                 return Response.Ok();
             });
 
-            var tryNextTime = "Feeds to try as next";
-            if (string.IsNullOrWhiteSpace(tryNextTime))
-            {
-                var nop = Feed.Empty;
-                var seq = Feed.Sequence("index", new[] {1,2,3});
-                var cir = Feed.Circular("index", new[] {1,2,3});
-                var sfl = Feed.Shuffle("index", new[] {1,2,3});
-                var csv = Feed.FromJson<User>("user", "C:/Files/users.json");
-            }
-
-            var scenario = ScenarioBuilder
-                .CreateScenario("Hello World!", new[] { step })
-                .WithFeed(feed);
+            var scenario = ScenarioBuilder.CreateScenario("Hello World!", new[] {step});
 
             NBomberRunner.RegisterScenarios(scenario)
                          .RunInConsole();

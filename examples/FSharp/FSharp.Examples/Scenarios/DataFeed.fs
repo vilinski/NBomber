@@ -5,35 +5,37 @@ open System.Threading.Tasks
 
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
+open NBomber
 open NBomber.Contracts
 open NBomber.FSharp
 
+[<CLIMutable>]
+type User = {
+    Id: int
+    Name: string
+}
+
 let run () =
-    let feedVariant = 42
-    let feed =
-        match feedVariant with
-        | 0 -> Feed.empty
-        | 1 -> Feed.ofSeq "collection" [ 1 .. 1000000 ]
-        | 2 -> Feed.circular "circular" [ 1 .. 10 ]
-        | 3 -> Feed.shuffle "random" [| 1 .. 10 |]
-        | 4 -> Feed.fromJson "persons" "C:/DataFiles/persons.json"
-        | 5 -> Feed.fromFile "account" "C:/DataFiles/session-recording.txt"
-               |> Feed.map String.length
-        | _ -> Feed.circular "numbers" (seq { 1 .. 10 })
 
-    let step = Step.create("simple step", fun context -> task {
-        // to access feed data use feed name as a key
-        let number = unbox context.Data.["feed.numbers"]
-        context.Logger.Information("Data from feed: {number}", number)
+    let data = FeedData.fromSeq [1; 2; 3; 4; 5]
+               |> FeedData.shuffleData
 
-        do! Task.Delay(TimeSpan.FromSeconds(0.1))
+    //let data = FeedData.fromJson<User>("users_feed_data.json")
+    //let data = FeedData.fromCsv<User>("users_feed_data.csv")
+
+    let feed = Feed.createCircular "numbers" data
+    //let feed = Feed.createConstant "numbers" data
+    //let feed = Feed.createRandom "numbers" data
+
+    let step = Step.create("simple step", feed, fun context -> task {
+
+        do! Task.Delay(TimeSpan.FromSeconds 1.0)
+
+        context.Logger.Information("Data from feed: {FeedItem}", context.FeedItem)
         return Response.Ok()
     })
 
-    let scenario =
-        [ step ]
-        |> Scenario.create "Hello World!"
-        |> Scenario.withFeed feed
+    let scenario = Scenario.create "Hello World!" [step]
 
-    NBomberRunner.registerScenarios [ scenario ]
+    NBomberRunner.registerScenarios [scenario]
     |> NBomberRunner.runInConsole

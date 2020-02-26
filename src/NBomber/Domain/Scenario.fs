@@ -9,23 +9,27 @@ open NBomber
 open NBomber.Configuration
 open NBomber.Errors
 
-let createCorrelationId (scnName: ScenarioName, concurrentCopies: int) =
+let createCorrelationId (scnName: ScenarioName, copyNumber): Contracts.CorrelationId =
+    { Id = sprintf "%s_%i" scnName copyNumber
+      ScenarioName = scnName
+      CopyNumber = copyNumber }
+
+let createCorrelationIds (scnName: ScenarioName, concurrentCopies: int) =
     [|0 .. concurrentCopies - 1|]
-    |> Array.map(fun i -> sprintf "%s_%i" scnName i)
+    |> Array.map(fun i -> createCorrelationId(scnName, i))
 
 let create (config: Contracts.Scenario) =
     { ScenarioName = config.ScenarioName
       TestInit = config.TestInit
       TestClean = config.TestClean
-      Feed = config.Feed
       Steps = config.Steps |> Seq.cast<Step> |> Seq.toArray
       ConcurrentCopies = config.ConcurrentCopies
-      CorrelationIds = createCorrelationId(config.ScenarioName, config.ConcurrentCopies)
+      CorrelationIds = createCorrelationIds(config.ScenarioName, config.ConcurrentCopies)
       WarmUpDuration = config.WarmUpDuration
       Duration = config.Duration }
 
 let init (scenario: Scenario,
-          initAllConnectionPools: Scenario -> ConnectionPool<obj>[],
+          initAllConnectionPools: Scenario -> UntypedConnectionPool[],
           customSettings: string,
           nodeType: Contracts.NodeType,
           logger: ILogger) =
@@ -76,7 +80,7 @@ let applySettings (settings: ScenarioSetting[]) (scenarios: Scenario[]) =
 
     let updateScenario (scenario: Scenario, settings: ScenarioSetting) =
         { scenario with ConcurrentCopies = settings.ConcurrentCopies
-                        CorrelationIds = createCorrelationId(scenario.ScenarioName, settings.ConcurrentCopies)
+                        CorrelationIds = createCorrelationIds(scenario.ScenarioName, settings.ConcurrentCopies)
                         WarmUpDuration = settings.WarmUpDuration.TimeOfDay
                         Duration = settings.Duration.TimeOfDay }
 

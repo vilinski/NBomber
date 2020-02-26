@@ -11,39 +11,32 @@ open NBomber
 open NBomber.Contracts
 open NBomber.Configuration
 open NBomber.Domain
+open NBomber.Errors
 open NBomber.Infra
 open NBomber.Infra.Dependency
 open NBomber.DomainServices
-open NBomber.Errors
 
 type ConnectionPool =
 
-    static member create<'TConnection>(name: string,
-                                       openConnection: unit -> 'TConnection,
-                                       ?closeConnection: 'TConnection -> unit,
-                                       ?connectionsCount: int) =
-        { PoolName = name
+    static member create(name: string,
+                         connectionsCount: int,
+                         openConnection: unit -> 'TConnection,
+                         ?closeConnection: 'TConnection -> unit) =
+
+        { ConnectionPool.PoolName = name
           OpenConnection = openConnection
           CloseConnection = closeConnection
           ConnectionsCount = connectionsCount
           AliveConnections = Array.empty }
           :> IConnectionPool<'TConnection>
 
-    static member none =
-        { PoolName = Constants.EmptyPoolName
+    static member empty =
+        { ConnectionPool.PoolName = Constants.EmptyPoolName
           OpenConnection = ignore
           CloseConnection = None
-          ConnectionsCount = None
+          ConnectionsCount = 0
           AliveConnections = Array.empty }
           :> IConnectionPool<unit>
-
-    static member internal internalNone<'TConnection> () =
-        { PoolName = Constants.EmptyPoolName
-          OpenConnection = fun _ -> Unchecked.defaultof<'TConnection>
-          CloseConnection = None
-          ConnectionsCount = None
-          AliveConnections = Array.empty }
-          :> IConnectionPool<'TConnection>
 
 type Step =
 
@@ -54,50 +47,45 @@ type Step =
 
     static member create (name: string,
                           connectionPool: IConnectionPool<'TConnection>,
-                          execute: StepContext<'TConnection> -> Task<Response>,
-                          ?repeatCount: int,
-                          ?doNotTrack: bool) =
-
-        let p = connectionPool :?> ConnectionPool<'TConnection>
-
-        let newOpen = fun () -> p.OpenConnection() :> obj
-
-        let newClose =
-            match p.CloseConnection with
-            | Some func -> Some <| fun (c: obj) -> c :?> 'TConnection |> func
-            | None      -> None
-
-        let newPool = { PoolName = p.PoolName
-                        OpenConnection = newOpen
-                        CloseConnection = newClose
-                        ConnectionsCount = p.ConnectionsCount
-                        AliveConnections = Array.empty }
-
-        let newExecute =
-            fun (context: StepContext<obj>) ->
-                let newContext = { CorrelationId = context.CorrelationId
-                                   CancellationToken = context.CancellationToken
-                                   Connection = context.Connection :?> 'TConnection
-                                   Data = context.Data
-                                   Logger = context.Logger }
-                execute(newContext)
+                          feed: IFeed<'TFeedItem>,
+                          execute: StepContext<'TConnection,'TFeedItem> -> Task<Response>,
+                          ?repeatCount: int, ?doNotTrack: bool) =
 
         { StepName = name
-          ConnectionPool = newPool
-          Execute = newExecute
-          CurrentContext = None
+          ConnectionPool = ConnectionPool.toUntypedPool(connectionPool)
+          Execute = Step.toUntypedExec(execute)
+          Context = None
+          Feed = Feed.toUntypedFeed(feed)
           RepeatCount = Step.getRepeatCount(repeatCount)
           DoNotTrack = defaultArg doNotTrack Constants.DefaultDoNotTrack }
           :> IStep
 
     static member create (name: string,
-                          execute: StepContext<'TConnection> -> Task<Response>,
+                          connectionPool: IConnectionPool<'TConnection>,
+                          execute: StepContext<'TConnection,unit> -> Task<Response>,
                           ?repeatCount: int,
                           ?doNotTrack: bool) =
 
-        Step.create(name,
-                    ConnectionPool.internalNone<'TConnection>(),
-                    execute,
+        Step.create(name, connectionPool, Feed.empty, execute,
+                    Step.getRepeatCount(repeatCount),
+                    defaultArg doNotTrack Constants.DefaultDoNotTrack)
+
+    static member create (name: string,
+                          feed: IFeed<'TFeedItem>,
+                          execute: StepContext<unit,'TFeedItem> -> Task<Response>,
+                          ?repeatCount: int,
+                          ?doNotTrack: bool) =
+
+        Step.create(name, ConnectionPool.empty, feed, execute,
+                    Step.getRepeatCount(repeatCount),
+                    defaultArg doNotTrack Constants.DefaultDoNotTrack)
+
+    static member create (name: string,
+                          execute: StepContext<unit,unit> -> Task<Response>,
+                          ?repeatCount: int,
+                          ?doNotTrack: bool) =
+
+        Step.create(name, ConnectionPool.empty, Feed.empty, execute,
                     Step.getRepeatCount(repeatCount),
                     defaultArg doNotTrack Constants.DefaultDoNotTrack)
 
@@ -114,15 +102,10 @@ module Scenario =
         { ScenarioName = name
           TestInit = Unchecked.defaultof<_>
           TestClean = Unchecked.defaultof<_>
-          Feed = Feed.empty
           Steps = Seq.toArray(steps)
           ConcurrentCopies = Constants.DefaultConcurrentCopies
           WarmUpDuration = TimeSpan.FromSeconds(Constants.DefaultWarmUpDurationInSec)
           Duration = TimeSpan.FromSeconds(Constants.DefaultScenarioDurationInSec) }
-
-
-    let withFeed (feed: IFeed<'T>) (scenario: Contracts.Scenario) =
-       { scenario with Feed = feed |> Feed.map box  }
 
     let withTestInit (initFunc: ScenarioContext -> Task<unit>) (scenario: Contracts.Scenario) =
         { scenario with TestInit = Some(fun token -> initFunc(token) :> Task) }
@@ -192,20 +175,3 @@ module NBomberRunner =
 
     let internal runWithResult (context: TestContext) =
         NBomberRunner.runAs(Process, context)
-
-/// Data feed
-module Feed =
-    /// Empty data feed
-    let empty = Feed.empty
-    /// Generates values from specified sequence
-    let ofSeq = Feed.ofSeq
-    /// Generates values from shuffled collection
-    let shuffle = Feed.shuffle
-    /// Circulate iterate over the specified collection
-    let circular = Feed.circular
-    /// Read a line from file path
-    let fromFile = Feed.fromFile
-    /// json file feed
-    let fromJson = Feed.fromJson
-    /// Converts values
-    let map = Feed.map

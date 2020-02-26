@@ -21,8 +21,8 @@ type State = {
     ClientId: string
     AgentsTopic: string
     CoordinatorTopic: string
-    Agents: Dictionary<ClientId, AgentNodeInfo>
-    AgentsStats: Dictionary<ClientId, RawNodeStats>
+    Agents: Dict<ClientId, AgentNodeInfo>
+    AgentsStats: Dict<ClientId, RawNodeStats>
     TestSessionArgs: TestSessionArgs
     Settings: CoordinatorSettings
     MqttClient: IMqttClient
@@ -85,7 +85,7 @@ module Communication =
         if failCounter > 5 then
             return! AppError.createResult(CommunicationError.NotAllStatsReceived)
         else
-            return st.AgentsStats |> Map.fromDictionary
+            return st.AgentsStats |> Map.ofDictionary
     }
 
     let waitOnAllAgents (st: State, operation: NodeOperationType) = asyncResult {
@@ -197,8 +197,8 @@ let initCoordinator (dep: Dependency, registeredScenarios: Scenario[],
         ClientId = clientId
         AgentsTopic = Contracts.createAgentsTopic(settings.ClusterId)
         CoordinatorTopic = Contracts.createCoordinatorTopic(settings.ClusterId)
-        Agents = Dictionary<_,_>()
-        AgentsStats = Dictionary<_,_>()
+        Agents = Dict.empty
+        AgentsStats = Dict.empty
         TestSessionArgs = args
         Settings = settings
         MqttClient = mqttClient

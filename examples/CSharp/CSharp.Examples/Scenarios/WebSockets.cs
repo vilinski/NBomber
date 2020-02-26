@@ -14,51 +14,54 @@ namespace CSharp.Examples.Scenarios
     {
         public static void Run()
         {
-            var url = "ws://localhost:53231";
+            var url = "ws://localhost:5000";
+            var concurrentCopies = 50;
 
-            var webSocketsPool = ConnectionPool.Create("webSocketsPool",
-            openConnection: () =>
-            {
-                var ws = new ClientWebSocket();
-                ws.ConnectAsync(new Uri(url), CancellationToken.None).Wait();
-                return ws;
-            },
-            closeConnection: (connection) =>
-            {
-                connection.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None)
-                          .Wait();
-            });
-            //connectionsCount: 50);
+            var webSocketsPool = ConnectionPool.Create(
+                name: "webSocketsPool",
+                connectionsCount: concurrentCopies,
+                openConnection: () =>
+                {
+                    var ws = new ClientWebSocket();
+                    ws.ConnectAsync(new Uri(url), CancellationToken.None).Wait();
+                    return ws;
+                },
+                closeConnection: (connection) =>
+                {
+                    connection.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None)
+                              .Wait();
+                }
+            );
 
-            var pingStep = Step.Create("ping", async context =>
+            var pingStep = Step.Create("ping", webSocketsPool, async context =>
             {
                 var msg = new WebSocketRequest
                 {
-                    CorrelationId = context.CorrelationId,
+                    CorrelationId = context.CorrelationId.Id,
                     RequestType = RequestType.Ping
                 };
                 var bytes = MsgConverter.ToJsonByteArray(msg);
                 await context.Connection.SendAsync(bytes, WebSocketMessageType.Text, true, context.CancellationToken);
                 return Response.Ok();
-            },
-            connectionPool: webSocketsPool);
+            });
 
-            var pongStep = Step.Create("pong", async context =>
+            var pongStep = Step.Create("pong", webSocketsPool, async context =>
             {
                 while (true)
                 {
                     var (response, message) = await WebSocketsMiddleware.ReadFullMessage(context.Connection, context.CancellationToken);
                     var msg = MsgConverter.FromJsonByteArray<WebSocketResponse>(message);
 
-                    if (msg.CorrelationId == context.CorrelationId)
+                    if (msg.CorrelationId == context.CorrelationId.Id)
                     {
                         return Response.Ok(msg);
                     }
                 }
-            },
-                connectionPool: webSocketsPool);
+            });
 
-            var scenario = ScenarioBuilder.CreateScenario("web_socket test", new[] { pingStep, pongStep });
+            var scenario = ScenarioBuilder
+                .CreateScenario("web_socket test", new[] { pingStep, pongStep })
+                .WithConcurrentCopies(concurrentCopies);
 
             NBomberRunner.RegisterScenarios(scenario)
                          .RunInConsole();
