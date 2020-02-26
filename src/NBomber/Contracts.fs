@@ -86,7 +86,9 @@ type StepContext<'TConnection,'TFeedItem> = {
     Data: Dict<string,obj>
     FeedItem: 'TFeedItem
     Logger: ILogger
-}
+} with
+  member x.GetPreviousStepResponse<'T>() =
+      x.Data.["nbomber_step_response"] :?> 'T
 
 type ScenarioContext = {
     NodeType: NodeType

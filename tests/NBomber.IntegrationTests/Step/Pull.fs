@@ -164,7 +164,7 @@ let ``context.Data should store any payload data from latest step.Response`` () 
 
     let step2 = Step.create("step 2", fun context -> task {
         step2Counter <- counter
-        counterFromStep1 <- context.Data.[NBomber.Domain.Constants.StepResponseKey] :?> int
+        counterFromStep1 <- context.GetPreviousStepResponse<int>()
         do! Task.Delay(TimeSpan.FromSeconds(0.1))
         return Response.Ok()
     })
