@@ -111,7 +111,7 @@ let receiveCoordinatorRequest (st: State, msg: RequestMessage) = asyncResult {
         do! Response.AgentStats(stats) |> sendToCoordinator(st)
 }
 
-let initAgent (dep: Dependency, registeredScenarios: Scenario[], settings: AgentSettings) = async {
+let initAgent (dep: GlobalDependency, registeredScenarios: Scenario[], settings: AgentSettings) = async {
 
     let clientId = sprintf "agent_%s" (Guid.NewGuid().ToString("N"))
     let! mqttClient = Mqtt.initClient(clientId, settings.MqttServer, settings.MqttPort, dep.Logger)
@@ -173,7 +173,7 @@ type ClusterAgent() =
     let mutable _state: Option<State> = None
     member x.State = _state
 
-    member x.StartListening(dep: Dependency, registeredScenarios: Scenario[],
+    member x.StartListening(dep: GlobalDependency, registeredScenarios: Scenario[],
                             settings: AgentSettings) =
         async {
             let! state = initAgent(dep, registeredScenarios, settings)

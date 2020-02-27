@@ -186,7 +186,7 @@ let receiveAgentResponse (st: State, msg: ResponseMessage) = result {
         st.AgentsStats.[msg.Headers.ClientId] <- stats
 }
 
-let initCoordinator (dep: Dependency, registeredScenarios: Scenario[],
+let initCoordinator (dep: GlobalDependency, registeredScenarios: Scenario[],
                      settings: CoordinatorSettings, testArgs: TestSessionArgs) = async {
 
     let clientId = sprintf "coordinator_%s" (Guid.NewGuid().ToString("N"))
@@ -246,7 +246,7 @@ type ClusterCoordinator() =
     let mutable _state: Option<State> = None
     member x.State = _state
 
-    member x.RunSession(dep: Dependency, registeredScenarios: Scenario[],
+    member x.RunSession(dep: GlobalDependency, registeredScenarios: Scenario[],
                         settings: CoordinatorSettings, sessionArgs: TestSessionArgs) =
         asyncResult {
             let! state = initCoordinator(dep, registeredScenarios, settings, sessionArgs)

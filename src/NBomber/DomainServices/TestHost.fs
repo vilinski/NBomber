@@ -43,7 +43,7 @@ type TestSessionArgs = {
         CustomSettings = customSettings
         SendStatsInterval = statsInterval }
 
-let displayProgress (dep: Dependency, scnRunners: ScenarioRunner[]) =
+let displayProgress (dep: GlobalDependency, scnRunners: ScenarioRunner[]) =
     let runner = scnRunners |> Array.sortByDescending(fun x -> x.Scenario.Duration) |> Array.head
     if scnRunners.Length > 1 then
         dep.Logger.Information("waiting time: duration '{0}' of the longest scenario '{1}'", runner.Scenario.Duration, runner.Scenario.ScenarioName)
@@ -52,7 +52,7 @@ let displayProgress (dep: Dependency, scnRunners: ScenarioRunner[]) =
 
     dep.ShowProgressBar(runner.Scenario.Duration)
 
-let buildInitConnectionPools (dep: Dependency) =
+let buildInitConnectionPools (dep: GlobalDependency) =
     if dep.ApplicationType = ApplicationType.Console then
         let mutable pb = Unchecked.defaultof<ShellProgressBar.ProgressBar>
 
@@ -71,7 +71,7 @@ let buildInitConnectionPools (dep: Dependency) =
         fun scenario ->
             ConnectionPool.init(scenario, ignore, ignore, ignore, dep.Logger)
 
-let runInitScenarios (dep: Dependency) (customSettings: string) (scenarios: Scenario[]) = task {
+let runInitScenarios (dep: GlobalDependency) (customSettings: string) (scenarios: Scenario[]) = task {
     let mutable failed = false
     let mutable error = Unchecked.defaultof<_>
 
@@ -95,7 +95,7 @@ let runInitScenarios (dep: Dependency) (customSettings: string) (scenarios: Scen
            else error |> Result.getError |> Error
 }
 
-let runWarmUpScenarios (dep: Dependency, scnRunners: ScenarioRunner[]) =
+let runWarmUpScenarios (dep: GlobalDependency, scnRunners: ScenarioRunner[]) =
     scnRunners
     |> Array.filter(fun x -> x.Scenario.WarmUpDuration.Ticks > 0L)
     |> Array.iter(fun x ->
@@ -108,7 +108,7 @@ let runWarmUpScenarios (dep: Dependency, scnRunners: ScenarioRunner[]) =
             warmupTask.Wait()
     )
 
-let runBombing (dep: Dependency, scnRunners: ScenarioRunner[]) =
+let runBombing (dep: GlobalDependency, scnRunners: ScenarioRunner[]) =
     dep.Logger.Information("starting bombing...")
     let bombingTask = scnRunners |> Array.map(fun x -> x.Run()) |> Task.WhenAll
     if dep.ApplicationType = ApplicationType.Console then
@@ -117,19 +117,19 @@ let runBombing (dep: Dependency, scnRunners: ScenarioRunner[]) =
     else
         bombingTask.Wait()
 
-let stopAndCleanScenarios (dep: Dependency, scnRunners: ScenarioRunner[], customSettings: string) =
+let stopAndCleanScenarios (dep: GlobalDependency, scnRunners: ScenarioRunner[], customSettings: string) =
     dep.Logger.Information("stopping bombing and cleaning resources...")
     scnRunners |> Array.iter(fun x -> x.Stop().Wait())
     scnRunners |> Array.iter(fun x -> Scenario.clean(x.Scenario, dep.NodeType, dep.Logger, customSettings))
     dep.Logger.Information("bombing stoped and resources cleaned")
 
-let printTargetScenarios (dep: Dependency) (scenarios: Scenario[]) =
+let printTargetScenarios (dep: GlobalDependency) (scenarios: Scenario[]) =
     scenarios
     |> Array.map(fun x -> x.ScenarioName)
     |> fun targets -> dep.Logger.Information("target scenarios: {0}", String.concatWithCommaAndQuotes(targets))
     |> fun _ -> scenarios
 
-let createNodeInfo (dep: Dependency, currentOperation: NodeOperationType) =
+let createNodeInfo (dep: GlobalDependency, currentOperation: NodeOperationType) =
     { MachineName = dep.MachineInfo.MachineName
       Sender = dep.NodeType
       CurrentOperation = currentOperation }
@@ -169,7 +169,7 @@ module TestHostReporting =
         else
             new System.Timers.Timer()
 
-type TestHost(dep: Dependency, registeredScenarios: Scenario[]) =
+type TestHost(dep: GlobalDependency, registeredScenarios: Scenario[]) =
 
     let mutable _scnArgs = TestSessionArgs.empty
     let mutable _currentOperation = NodeOperationType.None

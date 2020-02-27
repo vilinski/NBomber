@@ -1,13 +1,11 @@
 ﻿module internal NBomber.Infra.Dependency
 
 open System
-open System.Threading.Tasks
 open System.Reflection
 open System.Runtime.Versioning
 
 open Serilog
 open ShellProgressBar
-open FSharp.Control.Tasks.V2.ContextInsensitive
 open Microsoft.Extensions.Configuration
 
 open NBomber.Contracts
@@ -26,7 +24,7 @@ type MachineInfo = {
     CoresCount: int
 }
 
-type Dependency = {
+type GlobalDependency = {
     NBomberVersion: string
     ApplicationType: ApplicationType
     NodeType: NodeType
