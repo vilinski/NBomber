@@ -67,7 +67,7 @@ let execStep (step: Step, globalTimer: Stopwatch) = task {
 
 let execSteps (logger: ILogger, correlationId: CorrelationId,
                steps: Step[],
-               responses: ResizeArray<ResizeArray<StepResponse>>,
+               allScnResponses: (StepResponse list)[],
                cancelToken: CancellationToken,
                globalTimer: Stopwatch) = task {
 
@@ -92,7 +92,8 @@ let execSteps (logger: ILogger, correlationId: CorrelationId,
                     resourcesToDispose.Add(response.Response.Payload :?> IDisposable)
 
                 if not cancelToken.IsCancellationRequested && not step.DoNotTrack then
-                    responses.[stepIndex].Add(response)
+                    let stepResponses = response :: allScnResponses.[stepIndex]
+                    allScnResponses.[stepIndex] <- stepResponses
 
                 if step.RepeatCount = i then
                     if response.Response.Exception.IsNone then
@@ -104,14 +105,14 @@ let execSteps (logger: ILogger, correlationId: CorrelationId,
     cleanResources()
 }
 
-let filterByDuration (responses: StepResponse seq, duration: TimeSpan) =
+let filterByDuration (stepResponses: StepResponse list, duration: TimeSpan) =
     let validEndTime (endTime) = endTime <= duration.TotalMilliseconds
     let createEndTime (response) = response.StartTimeMs + float response.LatencyMs
 
-    responses
-    |> Seq.filter(fun x -> x.StartTimeMs <> -1.0) // to filter out TaskCanceledException
-    |> Seq.choose(fun x ->
+    stepResponses
+    |> List.filter(fun x -> x.StartTimeMs <> -1.0) // to filter out TaskCanceledException
+    |> List.choose(fun x ->
         match x |> createEndTime |> validEndTime with
         | true  -> Some x
         | false -> None)
-    |> Seq.toArray
+    |> List.toArray

@@ -19,23 +19,25 @@ type ScenarioActor(logger: ILogger,
                    scenarioTimer: Stopwatch,
                    cancelToken: CancellationToken) =
 
-    let allScnResponses = ResizeArray<ResizeArray<StepResponse>>(scenario.Steps.Length)
-    let mutable working = false
-    do scenario.Steps |> Array.iter(fun _ -> allScnResponses.Add(ResizeArray<StepResponse>()))
+    let _allScnResponses = Array.init<StepResponse list> scenario.Steps.Length (fun _ -> List.empty)
 
-    member x.Working = working
+    let mutable _working = false
+    let mutable _currentTask = Unchecked.defaultof<Task>
+
+    member x.Working = _working
+    member x.CurrentTask = _currentTask
 
     member x.ExecSteps() = task {
-        working <- true
-        do! Step.execSteps(logger, correlationId, scenario.Steps, allScnResponses, cancelToken, scenarioTimer)
-        working <- false
+        _working <- true
+        _currentTask <- Step.execSteps(logger, correlationId, scenario.Steps, _allScnResponses, cancelToken, scenarioTimer)
+        do! _currentTask
+        _working <- false
     }
 
     member x.GetStepResults(duration) =
         let filteredResponses =
-            allScnResponses
-            |> Seq.map(fun stepResponses -> Step.filterByDuration(stepResponses, duration))
-            |> Seq.toArray
+            _allScnResponses
+            |> Array.map(fun stepResponses -> Step.filterByDuration(stepResponses, duration))
 
         scenario.Steps
         |> Array.mapi(fun i step -> step, StepResults.create(step.StepName, filteredResponses.[i]))
