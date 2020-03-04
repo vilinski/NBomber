@@ -128,7 +128,7 @@ module StepStats =
 
         { StepName = stepResults.StepName
           OkLatencies = okLatencies
-          ReqeustCount = stepResults.Responses.Length
+          RequestCount = stepResults.Responses.Length
           OkCount = okLatencies.Length
           FailCount = stepResults.Responses.Length - okLatencies.Length
           RPS = calcRPS(okLatencies, executionTime)
@@ -152,7 +152,7 @@ module StepStats =
 
             { StepName = name
               OkLatencies = okLatencies
-              ReqeustCount = okLatencies.Length + failCount
+              RequestCount = okLatencies.Length + failCount
               OkCount = okLatencies.Length
               FailCount = failCount
               RPS = calcRPS(okLatencies, executionTime)
@@ -175,7 +175,7 @@ module ScenarioStats =
           More800Less1200 = b.Length
           More1200 = c.Length }
 
-    let createByStepStats (scenario: Scenario) (executionTime: TimeSpan) (stepsStats: StepStats[]) =
+    let createByStepStats (scnName: ScenarioName) (executionTime: TimeSpan) (stepsStats: StepStats[]) =
         let mergedStepsStats = StepStats.merge stepsStats executionTime
 
         let latencyCount = calcLatencyCount mergedStepsStats
@@ -184,10 +184,9 @@ module ScenarioStats =
         let allFailCount = mergedStepsStats |> Array.sumBy(fun x -> x.FailCount)
         let allRPS = mergedStepsStats |> Array.map(fun x -> x.RPS) |> Array.minOrDefault 0
 
-        { ScenarioName = scenario.ScenarioName
+        { ScenarioName = scnName
           StepsStats = mergedStepsStats
           RPS = allRPS
-          ConcurrentCopies = scenario.ConcurrentCopies
           OkCount = allOkCount
           FailCount = allFailCount
           LatencyCount = latencyCount
@@ -197,7 +196,7 @@ module ScenarioStats =
         stepsResults
         |> StepResults.merge
         |> Array.map(StepStats.create executionTime)
-        |> createByStepStats scenario executionTime
+        |> createByStepStats scenario.ScenarioName executionTime
 
 module NodeStats =
 
@@ -221,27 +220,18 @@ module NodeStats =
           LatencyCount = latencyCount
           NodeStatsInfo = nodeInfo }
 
-    let merge (nodeInfo: NodeInfo)
-              (allNodesStats: RawNodeStats[])
-              (executionTime: TimeSpan option)
-              (allScenarios: Scenario[]) =
-
-        let updateConcurrenyCounters (nodeCount: int) (scnStats: ScenarioStats) =
-            { scnStats with ConcurrentCopies = scnStats.ConcurrentCopies * nodeCount }
+    let merge (nodeInfo: NodeInfo, allNodesStats: RawNodeStats[], executionTime: TimeSpan) =
 
         allNodesStats
         |> Array.collect(fun x -> x.AllScenariosStats)
         |> Array.groupBy(fun x -> x.ScenarioName)
         |> Array.map(fun (scnName, allStats) ->
-            let nodeCount = allStats.Length
-            let scn = allScenarios |> Array.find(fun x -> x.ScenarioName = scnName)
 
-            let execTime = if executionTime.IsSome then executionTime.Value
-                           else scn.Duration
+//            let execTime = if executionTime.IsSome then executionTime.Value
+//                           else allStats.[0].Duration
 
             allStats
             |> Array.collect(fun x -> x.StepsStats)
-            |> ScenarioStats.createByStepStats scn execTime
-            |> updateConcurrenyCounters nodeCount
+            |> ScenarioStats.createByStepStats scnName executionTime
         )
         |> create nodeInfo

@@ -51,7 +51,7 @@ module StatisticsTable =
     let print (assets: Assets, scnStats: ScenarioStats[]) =
 
         let printStepRow (step: StepStats) =
-            let data = [step.StepName; step.ReqeustCount.ToString();
+            let data = [step.StepName; step.RequestCount.ToString();
                         step.OkCount.ToString(); step.FailCount.ToString();
                         step.RPS.ToString(); step.Min.ToString(); step.Mean.ToString(); step.Max.ToString();
                         step.Percent50.ToString(); step.Percent75.ToString(); step.Percent95.ToString();
@@ -75,7 +75,7 @@ module StatisticsTable =
 
             let rowStr = if row <> "" then row else "<tr></tr>"
 
-            let tableTitle = String.Format("Statistics for Scenario: <b>{0}</b>, Duration: <b>{1}</b>, RPS: <b>{2}</b>, Concurrent Copies: <b>{3}</b>", scnStats.ScenarioName, scnStats.Duration, scnStats.RPS, scnStats.ConcurrentCopies)
+            let tableTitle = String.Format("Statistics for Scenario: <b>{0}</b>, Duration: <b>{1}</b>, RPS: <b>{2}</b>", scnStats.ScenarioName, scnStats.Duration, scnStats.RPS)
 
             assets.StatisticsTableHtml
             |> String.replace("%table_title%", tableTitle)

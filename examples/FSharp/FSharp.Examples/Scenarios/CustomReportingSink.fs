@@ -44,9 +44,10 @@ let run () =
     })
 
     let scenario = Scenario.create "test_nbomber" [step]
-                   |> Scenario.withConcurrentCopies 200
                    |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 30.0)
-                   |> Scenario.withDuration(TimeSpan.FromSeconds 60.0)
+                   |> Scenario.withLoadSimulations [
+                       LoadSimulation.KeepConcurrentScenarios(200, TimeSpan.FromSeconds 60.0)
+                   ]
 
     let customReportingSink = CustomReportingSink()
     let sendStatsInterval = TimeSpan.FromSeconds 30.0

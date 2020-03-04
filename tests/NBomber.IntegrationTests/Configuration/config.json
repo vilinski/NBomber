@@ -7,14 +7,13 @@
       {
         "ScenarioName": "test_youtube",
         "WarmUpDuration": "00:00:05",
-        "Duration": "00:00:20",
-        "ConcurrentCopies": 100
-      },
-      {
-        "ScenarioName": "test_mongo",
-        "WarmUpDuration": "00:00:05",
-        "Duration": "00:00:20",
-        "ConcurrentCopies": 100
+
+          "LoadSimulationsSettings": [
+              { "KeepConcurrentScenarios": [5, "00:00:05"] },
+              { "RampConcurrentScenarios": [5, "00:00:05"] },
+              { "InjectScenariosPerSec": [5, "00:00:05"] },
+              { "RampScenariosPerSec": [5, "00:00:05"] }
+          ]
       }
     ],
     "TargetScenarios": [ "test_youtube" ],

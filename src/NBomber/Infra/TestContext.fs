@@ -2,10 +2,10 @@
 
 open System
 
+open NBomber
 open NBomber.Extensions
 open NBomber.Configuration
 open NBomber.Contracts
-open NBomber.Domain
 
 let empty =
     { TestSuite = Constants.DefaultTestSuite

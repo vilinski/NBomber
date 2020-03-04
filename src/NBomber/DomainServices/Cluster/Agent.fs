@@ -52,7 +52,7 @@ let validate (state: State, msg: RequestMessage) =
 
     | NewSession (_, agentSettings) ->
         let registeredScenarios =
-            state.TestHost.GetRegisteredScenarios() |> Array.map(fun x -> x.ScenarioName)
+            state.TestHost.RegisteredScenarios |> Array.map(fun x -> x.ScenarioName)
 
         agentSettings
         |> Array.tryFind(fun x -> state.Settings.TargetGroup = x.TargetGroup)

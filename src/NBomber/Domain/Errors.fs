@@ -1,5 +1,6 @@
 ﻿namespace NBomber.Errors
 
+open System
 open NBomber.Extensions
 
 type internal DomainError =
@@ -22,6 +23,10 @@ type internal ValidationError =
     | TargetGroupsAreNotFound of notFoundTargetGroups:string[]
     | SessionIsWrong
     | SendStatsIntervalIsWrong of minSendStatsInterval:float
+
+    // ConcurrencyScheduler
+    | DurationIsLessThan1Sec of simulation:string
+    | CopiesCountIsZeroOrNegative of simulation:string
 
 type internal CommunicationError =
     | SendMqttMsgFailed
@@ -87,6 +92,10 @@ type internal AppError =
 
         | SendStatsIntervalIsWrong minSendStatsInterval ->
             sprintf "SendStatsInterval should be bigger than min value: '%f'" minSendStatsInterval
+
+        | DurationIsLessThan1Sec simulation
+        | CopiesCountIsZeroOrNegative simulation ->
+            sprintf "Simulation error: '%s'" simulation
 
     static member toString (error: CommunicationError) =
         match error with

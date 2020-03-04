@@ -103,9 +103,13 @@ module Scenario =
           TestInit = Unchecked.defaultof<_>
           TestClean = Unchecked.defaultof<_>
           Steps = Seq.toArray(steps)
-          ConcurrentCopies = Constants.DefaultConcurrentCopies
           WarmUpDuration = TimeSpan.FromSeconds(Constants.DefaultWarmUpDurationInSec)
-          Duration = TimeSpan.FromSeconds(Constants.DefaultScenarioDurationInSec) }
+          LoadSimulations = [|
+            LoadSimulation.InjectScenariosPerSec(
+                copiesCount = Constants.DefaultConcurrentCopiesCount,
+                during = TimeSpan.FromSeconds Constants.DefaultScenarioDurationInSec
+            )
+          |] }
 
     let withTestInit (initFunc: ScenarioContext -> Task<unit>) (scenario: Contracts.Scenario) =
         { scenario with TestInit = Some(fun token -> initFunc(token) :> Task) }
@@ -113,17 +117,14 @@ module Scenario =
     let withTestClean (cleanFunc: ScenarioContext -> Task<unit>) (scenario: Contracts.Scenario) =
         { scenario with TestClean = Some(fun token -> cleanFunc(token) :> Task) }
 
-    let withConcurrentCopies (concurrentCopies: int) (scenario: Contracts.Scenario) =
-        { scenario with ConcurrentCopies = concurrentCopies }
-
     let withWarmUpDuration (duration: TimeSpan) (scenario: Contracts.Scenario) =
         { scenario with WarmUpDuration = duration }
 
     let withOutWarmUp (scenario: Contracts.Scenario) =
         { scenario with WarmUpDuration = TimeSpan.Zero }
 
-    let withDuration (duration: TimeSpan) (scenario: Contracts.Scenario) =
-        { scenario with Duration = duration }
+    let withLoadSimulations (loadSimulations: LoadSimulation list) (scenario: Contracts.Scenario) =
+        { scenario with LoadSimulations = Seq.toArray loadSimulations }
 
 module NBomberRunner =
 

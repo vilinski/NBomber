@@ -8,8 +8,9 @@ open System.Threading.Tasks
 open Serilog
 open Microsoft.Extensions.Configuration
 
-open NBomber.Configuration
+open NBomber
 open NBomber.Extensions
+open NBomber.Configuration
 
 type CorrelationId = {
     Id: string
@@ -88,7 +89,7 @@ type StepContext<'TConnection,'TFeedItem> = {
     Logger: ILogger
 } with
   member x.GetPreviousStepResponse<'T>() =
-      x.Data.["nbomber_step_response"] :?> 'T
+      x.Data.[Constants.StepResponseKey] :?> 'T
 
 type ScenarioContext = {
     NodeType: NodeType
@@ -100,14 +101,19 @@ type ScenarioContext = {
 type IStep =
     abstract StepName: string
 
+type LoadSimulation =
+    | KeepConcurrentScenarios of copiesCount:int * during:TimeSpan
+    | RampConcurrentScenarios of copiesCount:int * during:TimeSpan
+    | InjectScenariosPerSec   of copiesCount:int * during:TimeSpan
+    | RampScenariosPerSec     of copiesCount:int * during:TimeSpan
+
 type Scenario = {
     ScenarioName: string
     TestInit: (ScenarioContext -> Task) option
     TestClean: (ScenarioContext -> Task) option
     Steps: IStep[]
-    ConcurrentCopies: int
     WarmUpDuration: TimeSpan
-    Duration: TimeSpan
+    LoadSimulations: LoadSimulation[]
 }
 
 type ReportFile = {
@@ -149,7 +155,7 @@ type Response with
     static member Fail() =
         { Payload = null
           SizeBytes = 0
-          Exception = Some(Exception("unknown client's error")) }
+          Exception = Some(Exception "unknown client's error") }
 
     static member Fail(ex: Exception) =
         { Payload = null
@@ -159,4 +165,4 @@ type Response with
     static member Fail(reason: string) =
         { Payload = null
           SizeBytes = 0
-          Exception = Some(Exception(reason)) }
+          Exception = Some(Exception reason) }

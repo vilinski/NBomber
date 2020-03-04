@@ -1,8 +1,10 @@
 ﻿module Tests.Configuration.LoadConfigTests
 
 open System.IO
+
 open Xunit
 open FSharp.Json
+
 open NBomber.Configuration
 open NBomber.FSharp
 

@@ -4,13 +4,14 @@ open System
 
 open Xunit
 open Swensen.Unquote
-
-open NBomber.Configuration
-open NBomber.Contracts
-open NBomber.Infra
-
 open FsCheck
 open FsCheck.Xunit
+
+open NBomber
+open NBomber.Configuration
+open NBomber.Contracts
+open NBomber.FSharp
+open NBomber.Infra
 
 let globalSettings = {
     ScenariosSettings = None
@@ -20,34 +21,27 @@ let globalSettings = {
     SendStatsInterval = None
 }
 
-let scenario = {
-    ScenarioName = "1"
-    TestInit = None
-    TestClean = None
-    Steps = Array.empty
-    ConcurrentCopies = 1
-    WarmUpDuration = TimeSpan.FromSeconds(10.)
-    Duration = TimeSpan.FromSeconds(10.)
-}
+let scenario = Scenario.create "1" []
+               |> Scenario.withOutWarmUp
 
 let config = {
-    TestSuite = NBomber.Domain.Constants.DefaultTestSuite
-    TestName = NBomber.Domain.Constants.DefaultTestName
+    TestSuite = Constants.DefaultTestSuite
+    TestName = Constants.DefaultTestName
     GlobalSettings = None
     ClusterSettings = None
     CustomSettings = None
 }
 
 let context = {
-    TestSuite = NBomber.Domain.Constants.DefaultTestSuite
-    TestName = NBomber.Domain.Constants.DefaultTestName
+    TestSuite = Constants.DefaultTestSuite
+    TestName = Constants.DefaultTestName
     RegisteredScenarios = [| scenario |]
     TestConfig = None
     InfraConfig = None
     ReportFileName = None
     ReportFormats = Array.empty
     ReportingSinks = Array.empty
-    SendStatsInterval = TimeSpan.FromSeconds(NBomber.Domain.Constants.MinSendStatsIntervalSec)
+    SendStatsInterval = TimeSpan.FromSeconds(Constants.MinSendStatsIntervalSec)
 }
 
 [<Fact>]
@@ -76,7 +70,8 @@ let ``TestContext.getTargetScenarios should return only target scenarios if Targ
     | _ -> failwith ""
 
 [<Property>]
-let ``TestContext.getReportFileName should return from GlobalSettings, if empty then from TestContext, if empty then default name`` (configValue: string option, contextValue: string option) =
+let ``TestContext.getReportFileName should return from GlobalSettings, if empty then from TestContext, if empty then default name``
+    (configValue: string option, contextValue: string option) =
 
     (configValue.IsNone || configValue.IsSome && not (isNull configValue.Value)) ==> lazy
     (contextValue.IsNone || contextValue.IsSome && not (isNull contextValue.Value)) ==> lazy
@@ -91,13 +86,14 @@ let ``TestContext.getReportFileName should return from GlobalSettings, if empty 
     let fileName = TestContext.getReportFileName("sessionId", ctx)
 
     match configValue, contextValue with
-    | Some v1, Some v2 -> Assert.True(fileName.Equals v1)
-    | Some v1, None -> Assert.True(fileName.Equals v1)
-    | None, Some v2 -> Assert.True(fileName.Equals v2)
-    | None, None    -> Assert.True(fileName.Equals "report_sessionId")
+    | Some v1, Some v2 -> test <@ fileName = v1 @>
+    | Some v1, None    -> test <@ fileName = v1 @>
+    | None, Some v2    -> test <@ fileName = v2 @>
+    | None, None       -> test <@ fileName = "report_sessionId" @>
 
 [<Property>]
-let ``TestContext.getReportFormats should return from GlobalSettings, if empty then from TestContext, if empty then all supported formats`` (configValue: ReportFormat list option, contextValue: ReportFormat list) =
+let ``TestContext.getReportFormats should return from GlobalSettings, if empty then from TestContext, if empty then all supported formats``
+    (configValue: ReportFormat list option, contextValue: ReportFormat list) =
 
     let glSettings = { globalSettings with ReportFormats = configValue }
     let config = { config with GlobalSettings = Some glSettings }
@@ -107,17 +103,17 @@ let ``TestContext.getReportFormats should return from GlobalSettings, if empty t
                              ReportFileName = None }
 
     let formats = TestContext.getReportFormats(ctx)
-
     match configValue, contextValue with
     | Some v, _ -> Assert.True((formats = List.toArray v))
 
     | None, v when List.isEmpty v ->
-        Assert.True((formats = NBomber.Domain.Constants.AllReportFormats))
+        test <@ formats = Constants.AllReportFormats @>
 
-    | None, v -> Assert.True((formats = List.toArray contextValue))
+    | None, v -> test <@ formats = List.toArray contextValue @>
 
 [<Property>]
-let ``TestContext.getTestSuite should return from Config, if empty then from TestContext`` (configValue: string option, contextValue: string) =
+let ``TestContext.getTestSuite should return from Config, if empty then from TestContext``
+    (configValue: string option, contextValue: string) =
 
     match configValue with
     | Some value ->
@@ -131,7 +127,8 @@ let ``TestContext.getTestSuite should return from Config, if empty then from Tes
         test <@ testSuite = context.TestSuite @>
 
 [<Property>]
-let ``TestContext.getTestName should return from Config, if empty then from TestContext`` (configValue: string option, contextValue: string) =
+let ``TestContext.getTestName should return from Config, if empty then from TestContext``
+    (configValue: string option, contextValue: string) =
 
     match configValue with
     | Some value ->

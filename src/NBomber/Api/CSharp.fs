@@ -34,8 +34,8 @@ type Step =
          connectionPool: IConnectionPool<'TConnection>,
          feed: IFeed<'TFeedItem>,
          execute: Func<StepContext<'TConnection,'TFeedItem>,Task<Response>>,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+         [<Optional;DefaultParameterValue(Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
 
         FSharp.Step.create(name, connectionPool, feed, execute.Invoke, repeatCount, doNotTrack)
 
@@ -43,8 +43,8 @@ type Step =
         (name: string,
          connectionPool: IConnectionPool<'TConnection>,
          execute: Func<StepContext<'TConnection,unit>,Task<Response>>,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+         [<Optional;DefaultParameterValue(Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
 
         Step.Create(name, connectionPool, Feed.empty, execute, repeatCount, doNotTrack)
 
@@ -52,15 +52,15 @@ type Step =
         (name: string,
          feed: IFeed<'TFeedItem>,
          execute: Func<StepContext<unit,'TFeedItem>,Task<Response>>,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
-         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+         [<Optional;DefaultParameterValue(Constants.DefaultRepeatCount:int)>]repeatCount: int,
+         [<Optional;DefaultParameterValue(Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
 
         Step.Create(name, ConnectionPool.Empty, feed, execute, repeatCount, doNotTrack)
 
     static member Create(name: string,
                          execute: Func<StepContext<unit,unit>,Task<Response>>,
-                         [<Optional;DefaultParameterValue(Domain.Constants.DefaultRepeatCount:int)>]repeatCount: int,
-                         [<Optional;DefaultParameterValue(Domain.Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
+                         [<Optional;DefaultParameterValue(Constants.DefaultRepeatCount:int)>]repeatCount: int,
+                         [<Optional;DefaultParameterValue(Constants.DefaultDoNotTrack:bool)>]doNotTrack: bool) =
 
         Step.Create(name, ConnectionPool.Empty, Feed.empty, execute, repeatCount, doNotTrack)
 
@@ -83,10 +83,6 @@ type ScenarioBuilder =
         { scenario with TestClean = Some cleanFunc.Invoke }
 
     [<Extension>]
-    static member WithConcurrentCopies(scenario: Scenario, concurrentCopies: int) =
-        scenario |> FSharp.Scenario.withConcurrentCopies(concurrentCopies)
-
-    [<Extension>]
     static member WithWarmUpDuration(scenario: Scenario, duration: TimeSpan) =
         scenario |> FSharp.Scenario.withWarmUpDuration(duration)
 
@@ -95,8 +91,8 @@ type ScenarioBuilder =
         scenario |> FSharp.Scenario.withOutWarmUp
 
     [<Extension>]
-    static member WithDuration(scenario: Scenario, duration: TimeSpan) =
-        scenario |> FSharp.Scenario.withDuration(duration)
+    static member WithLoadSimulations (scenario: Scenario, loadSimulations: LoadSimulation[]) =
+        scenario |> FSharp.Scenario.withLoadSimulations(Seq.toList loadSimulations)
 
 [<Extension>]
 type NBomberRunner =

@@ -2,6 +2,7 @@
 
 open System
 open FSharp.Json
+open Microsoft.Extensions.Configuration
 
 type ReportFormat =
     | Txt = 0
@@ -9,11 +10,16 @@ type ReportFormat =
     | Csv = 2
     | Md = 3
 
+type LoadSimulationSettings =
+    | KeepConcurrentScenarios of copiesCount:int * during:DateTime
+    | RampConcurrentScenarios of copiesCount:int * during:DateTime
+    | InjectScenariosPerSec   of copiesCount:int * during:DateTime
+    | RampScenariosPerSec     of copiesCount:int * during:DateTime
+
 type ScenarioSetting = {
     ScenarioName: string
-    ConcurrentCopies: int
     WarmUpDuration: DateTime
-    Duration: DateTime
+    LoadSimulationsSettings: LoadSimulationSettings list
 }
 
 type GlobalSettings = {

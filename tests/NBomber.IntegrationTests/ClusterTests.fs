@@ -9,6 +9,7 @@ open Swensen.Unquote
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FsToolkit.ErrorHandling
 
+open NBomber
 open NBomber.Configuration
 open NBomber.Contracts
 open NBomber.Errors
@@ -61,14 +62,17 @@ let failStep = Step.create("fail step", fun _ -> task {
 let private scenario =
     Scenario.create "test_scenario" [okStep]
     |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 1.0)
-    |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+    |> Scenario.withLoadSimulations [
+        LoadSimulation.KeepConcurrentScenarios(copiesCount = 20, during = TimeSpan.FromSeconds 1.0)
+    ]
     |> NBomber.Domain.Scenario.create
 
 let scenarioSettings = {
     ScenarioName = "test_scenario"
-    ConcurrentCopies = 1
     WarmUpDuration = DateTime(TimeSpan.FromSeconds(1.0).Ticks)
-    Duration = DateTime(TimeSpan.FromSeconds(1.0).Ticks)
+    LoadSimulationsSettings = [
+        LoadSimulationSettings.KeepConcurrentScenarios(copiesCount = 20, during = DateTime(TimeSpan.FromSeconds(1.0).Ticks))
+    ]
 }
 
 let private testSessionArgs = {
@@ -76,13 +80,13 @@ let private testSessionArgs = {
     ScenariosSettings = [| scenarioSettings |]
     TargetScenarios = Array.empty
     CustomSettings = ""
-    SendStatsInterval = TimeSpan.FromSeconds(NBomber.Domain.Constants.MinSendStatsIntervalSec)
+    SendStatsInterval = TimeSpan.FromSeconds(Constants.MinSendStatsIntervalSec)
 }
 
 let internal isWarmUpStarted (currentOperation) =
     match currentOperation with
     | NodeOperationType.WarmUp -> true
-    | _                    -> false
+    | _                        -> false
 
 [<Fact>]
 let ``Coordinator can run as single bomber`` () = async {
@@ -116,7 +120,7 @@ let ``Coordinator should be able to start bombing even when agents are offline``
     let dep = Dependency.createFor(NodeType.Coordinator)
     let server = MqttTests.startMqttServer(randomPort)
 
-    // specified agents in config which are not connected
+    // specified agents in config which are not connected to the broker
     let coordinatorSettings = { coordinatorSettings with Agents = agents; MqttPort = Some randomPort }
 
     let scnArgs = { testSessionArgs with TestInfo = dep.TestInfo }
@@ -176,8 +180,8 @@ let ``Changing cluster topology should not affect a current test execution`` () 
     let server = MqttTests.startMqttServer(randomPort)
 
     // we specify long warm-up to be able to inject a second agent in the middle of the execution
-    let scnSettings = { scenarioSettings with WarmUpDuration = DateTime(TimeSpan.FromSeconds(5.0).Ticks)
-                                              Duration = DateTime(TimeSpan.FromSeconds(5.0).Ticks) }
+    let scnSettings = { scenarioSettings with WarmUpDuration = DateTime(TimeSpan.FromSeconds(5.0).Ticks) }
+
     let sessionArgs = { testSessionArgs with TestInfo = coordinatorDep.TestInfo
                                              ScenariosSettings = [| scnSettings |] }
     let registeredScenarios = [| scenario |]
@@ -225,22 +229,28 @@ let ``Coordinator should be able to propagate all types of settings among the ag
     let server = MqttTests.startMqttServer(randomPort)
 
     // set up custom settings
-    let scenarioSettings = { scenarioSettings with ConcurrentCopies = 5 }
+    let durationSettings = DateTime(TimeSpan.FromSeconds(5.0).Ticks)
+    let updatedScnSettings = {
+        scenarioSettings with
+            WarmUpDuration = durationSettings
+            LoadSimulationsSettings = [
+                LoadSimulationSettings.RampConcurrentScenarios(copiesCount = 10, during = durationSettings)
+            ]
+    }
     let customSettings = "{ Age: 28 }"
 
     let sessionArgs = {
         TestInfo = coordinatorDep.TestInfo
-        ScenariosSettings = [| scenarioSettings |]
+        ScenariosSettings = [| updatedScnSettings |]
         TargetScenarios = Array.empty
         CustomSettings = customSettings
-        SendStatsInterval = TimeSpan.FromSeconds(NBomber.Domain.Constants.MinSendStatsIntervalSec)
+        SendStatsInterval = TimeSpan.FromSeconds(Constants.MinSendStatsIntervalSec)
     }
 
     // set up scenarios
     let customSettingsList = ConcurrentDictionary<NodeType, string>()
     let scenario =
         Scenario.create "test_scenario" [okStep]
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
         |> Scenario.withTestInit(fun context -> task {
             // TestInit will be invoked on agent and on coordinator
             customSettingsList.[context.NodeType] <- context.CustomSettings
@@ -256,11 +266,12 @@ let ``Coordinator should be able to propagate all types of settings among the ag
     MqttTests.stopMqttServer server
 
     let customSettings = customSettingsList |> Seq.filter(fun x -> x.Value = customSettings) |> Seq.toArray
-    let agentScenario = agent.State.Value.TestHost.GetRunningScenarios() |> Array.item 0
+    let agentScenario = agent.State.Value.TestHost.TargetScenarios |> Array.item 0
 
     test <@ customSettings.Length = 2 @> // because one from coordinator and one from agent
-    test <@ scenario.ConcurrentCopies = NBomber.Domain.Constants.DefaultConcurrentCopies @>
-    test <@ agentScenario.ConcurrentCopies = scenarioSettings.ConcurrentCopies @>
+    test <@ agentScenario.WarmUpDuration = updatedScnSettings.WarmUpDuration.TimeOfDay @>
+    test <@ agentScenario.LoadTimeLine.Head.LoadSimulation = LoadSimulation.RampConcurrentScenarios(10, TimeSpan.FromSeconds(5.0)) @>
+    test <@ scenario.LoadTimeLine.Head.LoadSimulation <> LoadSimulation.RampConcurrentScenarios(10, TimeSpan.FromSeconds(5.0)) @>
 }
 
 [<Fact>]
@@ -281,7 +292,9 @@ let ``Agent should run test only under their agent group`` () = async {
     // set up scenarios
     let scenario =
         Scenario.create "test_scenario" [okStep]
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
+        ]
         |> NBomber.Domain.Scenario.create
 
     let scnArgs = { testSessionArgs with TestInfo = coordinatorDep.TestInfo }
@@ -325,7 +338,9 @@ let ``Coordinator and Agent should run tests only from TargetScenarios`` () = as
     // set up scenarios
     let scenario_111 =
         Scenario.create "test_scenario_111" [okStep]
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
+        ]
         |> NBomber.Domain.Scenario.create
 
     let scenario_222 = { scenario_111 with ScenarioName = "test_scenario_222"  }
@@ -413,7 +428,9 @@ let ``Coordinator should stop session execution if too many failed results on a 
     let scenario =
         Scenario.create "fail_scenario" [failStep]
         |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 1.0)
-        |> Scenario.withDuration(TimeSpan.FromSeconds 60.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 60.0)
+        ]
         |> NBomber.Domain.Scenario.create
 
     let registeredScenarios = [| scenario |]

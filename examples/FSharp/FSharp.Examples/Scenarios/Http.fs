@@ -1,5 +1,6 @@
 ﻿module HttpScenario
 
+open System
 open System.Net.Http
 
 open FSharp.Control.Tasks.V2.ContextInsensitive
@@ -26,7 +27,9 @@ let run () =
     })
 
     let scenario = Scenario.create "test_nbomber" [step]
-                   |> Scenario.withConcurrentCopies 100
+                   |> Scenario.withLoadSimulations [
+                       LoadSimulation.KeepConcurrentScenarios(100, TimeSpan.FromMinutes 1.0)
+                   ]
 
     NBomberRunner.registerScenarios [scenario]
     |> NBomberRunner.loadInfraConfig "infra_config.json"

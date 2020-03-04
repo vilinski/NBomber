@@ -1,5 +1,6 @@
 module Tests.FeedTests
 
+open Xunit
 open FsCheck
 open FsCheck.Xunit
 open Swensen.Unquote
@@ -10,7 +11,7 @@ open NBomber.Domain
 [<Property>]
 let ``Feed.createCircular iterate over array sequentially``(length: int) =
 
-    length > 2 ==> lazy
+    length > 10 ==> lazy
 
     let orderedList = [0 .. length - 1]
 
@@ -27,7 +28,7 @@ let ``Feed.createCircular iterate over array sequentially``(length: int) =
 [<Property>]
 let ``Feed.createConstant returns next value from seq for the same correlationId``(length: int) =
 
-    length > 2 ==> lazy
+    length > 10 ==> lazy
 
     let orderedList = [0 .. length - 1]
     let sameValues = orderedList |> List.map(fun i -> i, i)
@@ -45,7 +46,7 @@ let ``Feed.createConstant returns next value from seq for the same correlationId
 [<Property>]
 let ``Feed.createConstant returns the same value for the same correlationId``(length: int) =
 
-    length > 2 ==> lazy
+    length > 10 ==> lazy
 
     let orderedList = [0 .. length - 1]
     let sameValues = orderedList |> List.map(fun i -> i, i)
@@ -60,12 +61,10 @@ let ``Feed.createConstant returns the same value for the same correlationId``(le
 
     test <@ actual = sameValues @>
 
-[<Property>]
-let ``Feed.createRandom returns the random numbers list for each full iteration``(numbers: int list) =
+[<Fact>]
+let ``Feed.createRandom returns the random numbers list for each full iteration``() =
 
-    numbers.Length > 100 ==> lazy
-
-    let length = List.length numbers
+    let numbers = [1;2;3;4;5;6;7;8]
 
     let feed1 = FeedData.fromSeq numbers
                 |> Feed.createRandom "random"
@@ -73,12 +72,12 @@ let ``Feed.createRandom returns the random numbers list for each full iteration`
     let feed2 = FeedData.fromSeq numbers
                 |> Feed.createRandom "random"
 
-    let actual1 = List.init length (fun i ->
+    let actual1 = List.init numbers.Length (fun i ->
         let correlationId = Scenario.createCorrelationId("test_scn", i)
         feed1.GetNextItem(correlationId, null)
     )
 
-    let actual2 = List.init length (fun i ->
+    let actual2 = List.init numbers.Length (fun i ->
         let correlationId = Scenario.createCorrelationId("test_scn", i)
         feed2.GetNextItem(correlationId, null)
     )

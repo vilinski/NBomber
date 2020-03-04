@@ -1,32 +1,33 @@
 ﻿[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal NBomber.Domain.Scenario
 
+open System
 open System.Threading
 
 open Serilog
 
 open NBomber
+open NBomber.Extensions
 open NBomber.Configuration
 open NBomber.Errors
+open NBomber.Domain.Concurrency
 
 let createCorrelationId (scnName: ScenarioName, copyNumber): Contracts.CorrelationId =
     { Id = sprintf "%s_%i" scnName copyNumber
       ScenarioName = scnName
       CopyNumber = copyNumber }
 
-let createCorrelationIds (scnName: ScenarioName, concurrentCopies: int) =
-    [|0 .. concurrentCopies - 1|]
-    |> Array.map(fun i -> createCorrelationId(scnName, i))
-
 let create (config: Contracts.Scenario) =
+
+    let timeline = config.LoadSimulations |> Array.toList |> LoadTimeLine.unsafeCreateWithDuration
+
     { ScenarioName = config.ScenarioName
       TestInit = config.TestInit
       TestClean = config.TestClean
       Steps = config.Steps |> Seq.cast<Step> |> Seq.toArray
-      ConcurrentCopies = config.ConcurrentCopies
-      CorrelationIds = createCorrelationIds(config.ScenarioName, config.ConcurrentCopies)
+      LoadTimeLine = timeline.LoadTimeLine
       WarmUpDuration = config.WarmUpDuration
-      Duration = config.Duration }
+      Duration = timeline.ScenarioDuration }
 
 let init (scenario: Scenario,
           initAllConnectionPools: Scenario -> UntypedConnectionPool[],
@@ -79,10 +80,15 @@ let filterTargetScenarios (targetScenarios: string[]) (allScenarios: Scenario[])
 let applySettings (settings: ScenarioSetting[]) (scenarios: Scenario[]) =
 
     let updateScenario (scenario: Scenario, settings: ScenarioSetting) =
-        { scenario with ConcurrentCopies = settings.ConcurrentCopies
-                        CorrelationIds = createCorrelationIds(scenario.ScenarioName, settings.ConcurrentCopies)
+
+        let timeLine =
+            settings.LoadSimulationsSettings
+            |> List.map(LoadTimeLine.createSimulationFromSettings)
+            |> LoadTimeLine.unsafeCreateWithDuration
+
+        { scenario with LoadTimeLine = timeLine.LoadTimeLine
                         WarmUpDuration = settings.WarmUpDuration.TimeOfDay
-                        Duration = settings.Duration.TimeOfDay }
+                        Duration = timeLine.ScenarioDuration }
 
     scenarios
     |> Array.map(fun scn ->
@@ -90,5 +96,5 @@ let applySettings (settings: ScenarioSetting[]) (scenarios: Scenario[]) =
         |> Array.tryPick(fun x ->
             if x.ScenarioName = scn.ScenarioName then Some(scn, x)
             else None)
-        |> Option.map(updateScenario)
-        |> Option.defaultValue(scn))
+        |> Option.map updateScenario
+        |> Option.defaultValue scn)

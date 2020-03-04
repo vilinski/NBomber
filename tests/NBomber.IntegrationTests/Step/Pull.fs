@@ -32,9 +32,10 @@ let ``Ok and Fail should be properly count`` () =
 
     let scenario =
         Scenario.create "count test" [okStep; failStep]
-        |> Scenario.withConcurrentCopies 1
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 2.0)
+        ]
 
     let result = NBomberRunner.registerScenarios [scenario]
                  |> NBomberRunner.runTest
@@ -44,15 +45,15 @@ let ``Ok and Fail should be properly count`` () =
         let okStats = allStats |> Array.find(fun x -> x.StepName = "ok step")
         let failStats = allStats |> Array.find(fun x -> x.StepName = "fail step")
 
-        test <@ [okCnt-1..okCnt] |> Seq.contains okStats.OkCount @>
+        test <@ okStats.OkCount > 5 && okStats.OkCount <= 10 @>
         test <@ okStats.FailCount = 0 @>
         test <@ failStats.OkCount = 0 @>
-        test <@ [failCnt-1..failCnt] |> Seq.contains failStats.FailCount @>
+        test <@ failStats.FailCount > 5 && failStats.FailCount <= 10 @>
 
     | Error msg -> failwith msg
 
 [<Fact>]
-let ``Warmup should not have effect on stats`` () =
+let ``Warmup should have no effect on stats`` () =
 
     let okStep = Step.create("ok step", fun _ -> task {
         do! Task.Delay(TimeSpan.FromSeconds(0.1))
@@ -66,9 +67,10 @@ let ``Warmup should not have effect on stats`` () =
 
     let scenario =
         Scenario.create "warmup test" [okStep; failStep]
-        |> Scenario.withConcurrentCopies 1
         |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
+        ]
 
     let result = NBomberRunner.registerScenarios [scenario]
                  |> NBomberRunner.runTest
@@ -78,10 +80,10 @@ let ``Warmup should not have effect on stats`` () =
         let okStats = allStats |> Array.find(fun x -> x.StepName = "ok step")
         let failStats = allStats |> Array.find(fun x -> x.StepName = "fail step")
 
-        test <@ okStats.OkCount <= 5 @>
+        test <@ okStats.OkCount <= 10 @>
         test <@ okStats.FailCount = 0 @>
         test <@ failStats.OkCount = 0 @>
-        test <@ failStats.FailCount <= 5 @>
+        test <@ failStats.FailCount <= 10 @>
 
     | Error msg -> failwith msg
 
@@ -95,9 +97,10 @@ let ``Min/Mean/Max/RPS/DataTransfer should be properly count`` () =
 
     let scenario =
         Scenario.create "latency count test" [pullStep]
-        |> Scenario.withConcurrentCopies 1
         |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 1.0)
-        |> Scenario.withDuration(TimeSpan.FromSeconds 2.0)
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 2.0)
+        ]
 
     let result = NBomberRunner.registerScenarios [scenario]
                  |> NBomberRunner.runTest
@@ -140,14 +143,15 @@ let ``repeatCount should set how many times one step will be repeated`` () =
     let scenario =
         Scenario.create "latency count test" [repeatStep; resetStep]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     NBomberRunner.registerScenarios [scenario]
     |> NBomberRunner.runTest
     |> ignore
 
-    Assert.True(invokeCounter <= 5)
+    test <@ invokeCounter <= 5 @>
 
 [<Fact>]
 let ``context.Data should store any payload data from latest step.Response`` () =
@@ -172,8 +176,9 @@ let ``context.Data should store any payload data from latest step.Response`` () 
     let scenario =
         Scenario.create "test context.Data" [step1; step2]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     NBomberRunner.registerScenarios [scenario]
     |> NBomberRunner.runTest
@@ -197,8 +202,9 @@ let ``Step with DoNotTrack = true should has empty stats and not be printed`` ()
     let scenario =
         Scenario.create "test context.Data" [step1; step2]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     let result =
         NBomberRunner.registerScenarios [scenario]
@@ -227,8 +233,9 @@ let ``Step.CreatePause should work correctly and not printed in statistics`` () 
     let scenario =
         Scenario.create "test context.Data" [pause4sec; step1]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     let result =
         NBomberRunner.registerScenarios [scenario]
@@ -254,14 +261,16 @@ let ``NBomber should support to run and share the same step within one scenario 
     let scenario1 =
         Scenario.create "scenario 1" [step1; step2]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     let scenario2 =
         Scenario.create "scenario 2" [step2; step1]
         |> Scenario.withOutWarmUp
-        |> Scenario.withDuration(TimeSpan.FromSeconds 3.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 3.0)
+        ]
 
     let result =
         NBomberRunner.registerScenarios [scenario1; scenario2]
@@ -281,8 +290,9 @@ let ``NBomber should stop execution scenario if too many failed results on a war
     let scenario =
         Scenario.create "scenario" [step]
         |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 1.0)
-        |> Scenario.withDuration(TimeSpan.FromSeconds 60.0)
-        |> Scenario.withConcurrentCopies 1
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 60.0)
+        ]
 
     let result =
         NBomberRunner.registerScenarios [scenario]

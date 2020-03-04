@@ -30,7 +30,6 @@ type GlobalDependency = {
     NodeType: NodeType
     MachineInfo: MachineInfo
     Assets: Assets
-    ShowProgressBar: TimeSpan -> FixedDurationBar
     CreateProgressBar: int -> ProgressBar
     Logger: ILogger
     ReportingSinks: IReportingSink[]
@@ -47,9 +46,6 @@ module ProgressBar =
 
     let create (ticks: int) =
         new ProgressBar(ticks, String.Empty, options)
-
-    let show (duration: TimeSpan) =
-        new FixedDurationBar(duration, String.Empty, options)
 
 let private retrieveMachineInfo () =
 
@@ -85,7 +81,6 @@ let create (appType: ApplicationType,
       NodeType = nodeType
       MachineInfo = retrieveMachineInfo()
       Assets = ResourceManager.loadAssets()
-      ShowProgressBar = ProgressBar.show
       CreateProgressBar = ProgressBar.create
       Logger = logger
       ReportingSinks = Array.empty }

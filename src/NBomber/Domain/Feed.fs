@@ -1,6 +1,7 @@
 module internal NBomber.Domain.Feed
 
 open System
+open NBomber
 open NBomber.Contracts
 
 let toUntypedFeed (feed: IFeed<'TFeedItem>) =

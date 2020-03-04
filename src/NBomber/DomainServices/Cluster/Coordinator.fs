@@ -1,7 +1,6 @@
 ﻿module internal NBomber.DomainServices.Cluster.Coordinator
 
 open System
-open System.Collections.Generic
 
 open FsToolkit.ErrorHandling
 open MQTTnet.Client
@@ -67,7 +66,7 @@ module Communication =
     let sendStartBombing (st: State) =
         Request.StartBombing |> sendToAgents st
 
-    let getAgentsStats (st: State, forDuration: TimeSpan option) = asyncResult {
+    let getAgentsStats (st: State, forDuration: TimeSpan) = asyncResult {
         st.AgentsStats.Clear()
         do! Request.GetStatistics(forDuration) |> sendToAgents st
 
@@ -112,17 +111,15 @@ module ClusterReporting =
         let allNodesStats = Array.append [|coordinatorStats|] agentsStats
         allNodesStats
 
-    let buildClusterStats (st: State, allNodeStats: RawNodeStats[], executionTime: TimeSpan option) =
+    let buildClusterStats (st: State, allNodeStats: RawNodeStats[], executionTime: TimeSpan) =
 
         let meta = { MachineName = st.TestHost.CurrentNodeInfo.MachineName
                      Sender = NodeType.Cluster
                      CurrentOperation = st.TestHost.CurrentOperation }
 
-        st.TestHost.GetRegisteredScenarios()
-        |> Scenario.applySettings(st.TestSessionArgs.ScenariosSettings)
-        |> Statistics.NodeStats.merge meta allNodeStats executionTime
+        Statistics.NodeStats.merge(meta, allNodeStats, executionTime)
 
-    let fetchClusterStats (st: State, executionTime: TimeSpan option) = asyncResult {
+    let fetchClusterStats (st: State, executionTime: TimeSpan) = asyncResult {
         let! agentsStats = Communication.getAgentsStats(st, executionTime)
         let coordinatorStats = st.TestHost.GetNodeStats(executionTime)
         let allNodeStats = combineAllNodeStats(coordinatorStats, agentsStats)
@@ -144,7 +141,7 @@ module ClusterReporting =
                     match st.TestHost.CurrentNodeInfo.CurrentOperation with
                     | NodeOperationType.WarmUp
                     | NodeOperationType.Bombing ->
-                        let! clusterStats = fetchClusterStats(st, Some executionTime)
+                        let! clusterStats = fetchClusterStats(st, executionTime)
                         saveClusterStats(st.TestSessionArgs.TestInfo, clusterStats, st.ReportingSinks) |> ignore
 
                     | _ -> ()
@@ -158,7 +155,7 @@ module ClusterReporting =
             new System.Timers.Timer()
 
     let validateWarmUpStats (st: State) = asyncResult {
-        let! allStats = fetchClusterStats(st, None)
+        let! allStats = fetchClusterStats(st, TimeSpan.Zero)
         let clusterStats = allStats |> Array.find(fun x -> x.NodeStatsInfo.Sender = NodeType.Cluster)
         do! ScenarioValidation.validateWarmUpStats(clusterStats)
     }
@@ -237,7 +234,7 @@ let runSession (st: State) = asyncResult {
     bombingReportingTimer.Stop()
     do! Communication.waitOnAllAgentsComplete(st)
 
-    let! allStats = ClusterReporting.fetchClusterStats(st, None)
+    let! allStats = ClusterReporting.fetchClusterStats(st, TimeSpan.Zero)
     return allStats
 }
 

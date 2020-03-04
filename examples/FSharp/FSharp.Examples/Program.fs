@@ -4,9 +4,9 @@ open NBomber.FSharp
 [<EntryPoint>]
 let main argv =
 
-    //HelloWorldScenario.run()
+    HelloWorldScenario.run()
     //DataFeedScenario.run()
-    HttpScenario.run()
+    //HttpScenario.run()
     //CustomReportingScenario.run()
 
     0

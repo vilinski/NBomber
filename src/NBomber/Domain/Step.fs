@@ -9,6 +9,7 @@ open System.Threading.Tasks
 open Serilog
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
+open NBomber
 open NBomber.Extensions
 open NBomber.Contracts
 open NBomber.Domain

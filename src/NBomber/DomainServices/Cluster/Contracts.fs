@@ -19,7 +19,7 @@ type Request =
     | NewSession of sessionArgs:TestSessionArgs * agentSettings:TargetGroupSettings[]
     | StartWarmUp
     | StartBombing
-    | GetStatistics of executionTime:TimeSpan option
+    | GetStatistics of executionTime:TimeSpan
 
 type Response =
     | AgentInfo of AgentNodeInfo

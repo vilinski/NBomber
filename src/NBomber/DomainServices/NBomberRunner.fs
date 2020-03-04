@@ -70,6 +70,7 @@ let saveReport (dep: GlobalDependency) (testInfo: TestInfo) (context: TestContex
     let formats = TestContext.getReportFormats(context)
     Report.save("./", fileName, formats, report, dep.Logger)
 
+//todo: throw exception instead of detecting framework API
 let showErrors (dep: GlobalDependency) (errors: AppError[]) =
     if dep.ApplicationType = ApplicationType.Test then
         TestFrameworkRunner.showErrors(errors)

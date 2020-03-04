@@ -9,8 +9,8 @@ let inline private concatLines s =
 
 
 let private printScenarioHeader (scnStats: ScenarioStats) =
-    sprintf "scenario: '%s', duration: '%A', RPS: '%i', concurrent Copies: '%i'"
-        scnStats.ScenarioName scnStats.Duration scnStats.RPS scnStats.ConcurrentCopies
+    sprintf "scenario: '%s', duration: '%A', RPS: '%i'"
+        scnStats.ScenarioName scnStats.Duration scnStats.RPS
 
 let private printStepsTable (steps: StepStats[]) =
 
@@ -21,7 +21,7 @@ let private printStepsTable (steps: StepStats[]) =
         let dataInfoAvailable = s.DataTransfer.AllMB > 0.0
 
         [ "- name", s.StepName
-          "- request count", sprintf "all = %i | OK = %i | failed = %i" s.ReqeustCount s.OkCount s.FailCount
+          "- request count", sprintf "all = %i | OK = %i | failed = %i" s.RequestCount s.OkCount s.FailCount
           "- response time", sprintf "RPS = %i | min = %i | mean = %i | max = %i" s.RPS s.Min s.Mean s.Max
           "- response time percentile", sprintf "50%% = %i | 75%% = %i | 95%% = %i | StdDev = %i" s.Percent50 s.Percent75 s.Percent95 s.StdDev
           if dataInfoAvailable then

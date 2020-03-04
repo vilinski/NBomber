@@ -1,21 +1,23 @@
-﻿module Tests.Scenario
+﻿module Tests.ScenarioTests
 
 open System
 open System.Threading.Tasks
 
 open Xunit
+open Swensen.Unquote
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
+open NBomber.Extensions
 open NBomber.Contracts
 open NBomber.FSharp
 
 [<Fact>]
 let ``withTestClean should be invoked only once and not fail runner`` () =
 
-    let mutable invokeCounter = 0
+    let mutable cleanInvokeCounter = 0
 
     let testClean = fun _ -> task {
-        invokeCounter <- invokeCounter + 1
+        cleanInvokeCounter <- cleanInvokeCounter + 1
         failwith "exception was not handled"
     }
 
@@ -27,10 +29,15 @@ let ``withTestClean should be invoked only once and not fail runner`` () =
     let scenario =
         Scenario.create "withTestClean test" [okStep]
         |> Scenario.withTestClean testClean
-        |> Scenario.withDuration(TimeSpan.FromSeconds 1.0)
+        |> Scenario.withOutWarmUp
+        |> Scenario.withLoadSimulations [
+            LoadSimulation.KeepConcurrentScenarios(2,  TimeSpan.FromSeconds(1.0))
+        ]
 
-    NBomberRunner.registerScenarios [scenario]
-    |> NBomberRunner.runTest
-    |> ignore
+    let allStats =
+        NBomberRunner.registerScenarios [scenario]
+        |> NBomberRunner.runTest
+        |> Result.getOk
 
-    Assert.Equal(1, invokeCounter)
+    test <@ 1 = cleanInvokeCounter @>
+    test <@ allStats.[0].OkCount > 10 @>

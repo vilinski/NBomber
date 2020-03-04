@@ -25,7 +25,7 @@ type internal StepResults = {
 type internal StepStats = {
     StepName: string
     OkLatencies: Latency[]
-    ReqeustCount: int
+    RequestCount: int
     OkCount: int
     FailCount: int
     RPS: int
@@ -43,7 +43,6 @@ type internal ScenarioStats = {
     ScenarioName: string
     StepsStats: StepStats[]
     RPS: int
-    ConcurrentCopies: int
     OkCount: int
     FailCount: int
     LatencyCount: LatencyCount

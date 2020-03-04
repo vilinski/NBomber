@@ -47,15 +47,15 @@ module ScenarioValidation =
         if Array.isEmpty(scnWithEmptySteps) then Ok scenarios
         else Error <| EmptyStepName scnWithEmptySteps
 
-    let checkDuration (scenarios: Contracts.Scenario[]) =
-        let invalidScns = scenarios |> Array.choose(fun x -> if isDurationOk(x.Duration) then None else Some x.ScenarioName)
-        if Array.isEmpty(invalidScns) then Ok scenarios
-        else Error <| DurationIsWrong invalidScns
+//    let checkDuration (scenarios: Contracts.Scenario[]) =
+//        let invalidScns = scenarios |> Array.choose(fun x -> if isDurationOk(x.Duration) then None else Some x.ScenarioName)
+//        if Array.isEmpty(invalidScns) then Ok scenarios
+//        else Error <| DurationIsWrong invalidScns
 
-    let checkConcurrentCopies (scenarios: Contracts.Scenario[]) =
-        let invalidScns = scenarios |> Array.choose(fun x -> if isPositiveNumber(x.ConcurrentCopies) then None else Some x.ScenarioName)
-        if Array.isEmpty(invalidScns) then Ok scenarios
-        else Error <| ConcurrentCopiesIsWrong invalidScns
+//    let checkConcurrentCopies (scenarios: Contracts.Scenario[]) =
+//        let invalidScns = scenarios |> Array.choose(fun x -> if isPositiveNumber(x.ConcurrentCopies) then None else Some x.ScenarioName)
+//        if Array.isEmpty(invalidScns) then Ok scenarios
+//        else Error <| ConcurrentCopiesIsWrong invalidScns
 
     let validateWarmUpStats (nodeStats: RawNodeStats) =
         if nodeStats.FailCount > nodeStats.OkCount then
@@ -67,8 +67,8 @@ module ScenarioValidation =
         |> checkEmptyName
         >>= checkDuplicateName
         >>= checkEmptyStepName
-        >>= checkDuration
-        >>= checkConcurrentCopies
+        //>>= checkDuration
+        //>>= checkConcurrentCopies
         >>= fun _ -> Ok context
         |> Result.mapError(AppError.create)
 
@@ -90,25 +90,25 @@ module GlobalSettingsValidation =
         if List.isEmpty(notFoundScenarios) then Ok globalSettings
         else Error <| TargetScenariosNotFound(List.toArray notFoundScenarios, allScenarios)
 
-    let checkDuration (globalSettings: GlobalSettings) =
-        let invalidScns =
-            globalSettings.ScenariosSettings
-            |> Option.defaultValue List.empty
-            |> List.choose(fun x -> if isDurationOk(x.Duration.TimeOfDay) then None else Some(x.ScenarioName))
-            |> List.toArray
+//    let checkDuration (globalSettings: GlobalSettings) =
+//        let invalidScns =
+//            globalSettings.ScenariosSettings
+//            |> Option.defaultValue List.empty
+//            |> List.choose(fun x -> if isDurationOk(x.Duration.TimeOfDay) then None else Some(x.ScenarioName))
+//            |> List.toArray
+//
+//        if Array.isEmpty(invalidScns) then Ok globalSettings
+//        else Error <| DurationIsWrong invalidScns
 
-        if Array.isEmpty(invalidScns) then Ok globalSettings
-        else Error <| DurationIsWrong invalidScns
-
-    let checkConcurrentCopies (globalSettings: GlobalSettings) =
-        let invalidScns =
-            globalSettings.ScenariosSettings
-            |> Option.defaultValue List.empty
-            |> List.choose(fun x -> if isPositiveNumber(x.ConcurrentCopies) then None else Some x.ScenarioName)
-            |> List.toArray
-
-        if Array.isEmpty(invalidScns) then Ok globalSettings
-        else Error <| ConcurrentCopiesIsWrong invalidScns
+//    let checkConcurrentCopies (globalSettings: GlobalSettings) =
+//        let invalidScns =
+//            globalSettings.ScenariosSettings
+//            |> Option.defaultValue List.empty
+//            |> List.choose(fun x -> if isPositiveNumber(x.ConcurrentCopies) then None else Some x.ScenarioName)
+//            |> List.toArray
+//
+//        if Array.isEmpty(invalidScns) then Ok globalSettings
+//        else Error <| ConcurrentCopiesIsWrong invalidScns
 
     let checkEmptyReportName (globalSettings: GlobalSettings) =
         match globalSettings.ReportFileName with
@@ -119,8 +119,8 @@ module GlobalSettingsValidation =
     let checkSendStatsInterval (globalSettings: GlobalSettings) =
         match globalSettings.SendStatsInterval with
         | Some interval ->
-            if interval.TimeOfDay.TotalMinutes < NBomber.Domain.Constants.MinSendStatsIntervalSec
-                then Error <| SendStatsIntervalIsWrong(NBomber.Domain.Constants.MinSendStatsIntervalSec)
+            if interval.TimeOfDay.TotalMinutes < Constants.MinSendStatsIntervalSec
+                then Error <| SendStatsIntervalIsWrong(Constants.MinSendStatsIntervalSec)
             else
                 Ok globalSettings
         | None -> Ok globalSettings
@@ -132,8 +132,8 @@ module GlobalSettingsValidation =
             glSettings
             |> checkEmptyTarget
             >>= checkAvailableTarget(context.RegisteredScenarios)
-            >>= checkDuration
-            >>= checkConcurrentCopies
+            //>>= checkDuration
+            //>>= checkConcurrentCopies
             >>= checkEmptyReportName
             >>= checkSendStatsInterval
             >>= fun _ -> Ok context

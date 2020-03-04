@@ -14,7 +14,7 @@ module private Impl =
         sprintf "|-%s-|-%s-|" (sep l1) (sep l2)
 
     let asMdTable (s: StepStats) =
-        let count = sprintf "all = `%i`, OK = `%i`, failed = `%i`" s.ReqeustCount s.OkCount s.FailCount
+        let count = sprintf "all = `%i`, OK = `%i`, failed = `%i`" s.RequestCount s.OkCount s.FailCount
         let times = sprintf "RPS = `%i`, min = `%i`, mean = `%i`, max = `%i`" s.RPS s.Min s.Mean s.Max
         let percentile =
             sprintf "50%% = `%i`, 75%% = `%i`, 95%% = `%i`, StdDev = `%i`" s.Percent50 s.Percent75 s.Percent95 s.StdDev
@@ -48,7 +48,6 @@ module private Impl =
           ""
           sprintf "- Duration: `%A`" scnStats.Duration
           sprintf "- RPS: `%i`" scnStats.RPS
-          sprintf "- Concurrent Copies: `%i`" scnStats.ConcurrentCopies
           ""
         ]
         |> String.concat Environment.NewLine

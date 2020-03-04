@@ -1,6 +1,6 @@
 ﻿module Tests.Response
 
-open Xunit
+open Swensen.Unquote
 open FsCheck.Xunit
 
 open NBomber.Contracts
@@ -8,5 +8,5 @@ open NBomber.Contracts
 [<Property>]
 let ``Response.Ok(payload: byte[]) should calculate SizeBytes automatically`` (payload: byte[]) =
     let actual = Response.Ok(payload)
-    if isNull payload then Assert.Equal(0, actual.SizeBytes)
-    else Assert.Equal(Array.length(payload), actual.SizeBytes)
+    if isNull payload then test <@ 0 = actual.SizeBytes @>
+    else test <@ payload.Length = actual.SizeBytes @>

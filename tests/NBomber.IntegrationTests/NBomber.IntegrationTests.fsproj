@@ -20,10 +20,9 @@
     </Content>
     <Compile Include="TestContextTests.fs" />
     <Compile Include="Response.fs" />
-    <Compile Include="Scenario.fs" />
+    <Compile Include="ScenarioTests.fs" />
     <Compile Include="StatisticsTests.fs" />
     <Compile Include="Reporting\ReportingSinkTests.fs" />
-    <Compile Include="Reporting\TextReportTests.fs" />
     <Compile Include="Infra\MqttTests.fs" />
     <Compile Include="Step\Pull.fs" />
     <Compile Include="Configuration\LoadConfigTests.fs" />
@@ -31,6 +30,8 @@
     <Compile Include="Configuration\ValidationTests.fs" />
     <Compile Include="ClusterTests.fs" />
     <Compile Include="FeedTests.fs" />
+    <Compile Include="Concurrency\LoadTimeLineTests.fs" />
+    <Compile Include="Concurrency\ScenarioSchedulerTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />

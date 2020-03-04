@@ -13,44 +13,6 @@ type internal StepName = string
 type internal ScenarioName = string
 type internal Latency = int
 
-module internal Constants =
-    open NBomber.Configuration
-
-    [<Literal>]
-    let DefaultScenarioDurationInSec = 60.0
-
-    [<Literal>]
-    let DefaultConcurrentCopies = 50
-
-    [<Literal>]
-    let DefaultWarmUpDurationInSec = 10.0
-
-    [<Literal>]
-    let DefaultRepeatCount = 0
-
-    [<Literal>]
-    let DefaultDoNotTrack = false
-
-    let AllReportFormats = [|ReportFormat.Txt; ReportFormat.Html; ReportFormat.Csv; ReportFormat.Md|]
-
-    [<Literal>]
-    let StepResponseKey = "nbomber_step_response"
-
-    [<Literal>]
-    let EmptyPoolName = "nbomber_empty_pool"
-
-    [<Literal>]
-    let EmptyFeedName = "nbomber_empty_feed"
-
-    [<Literal>]
-    let DefaultTestSuite = "nbomber_test_suite"
-
-    [<Literal>]
-    let DefaultTestName = "nbomber_load_test"
-
-    [<Literal>]
-    let MinSendStatsIntervalSec = 5.0
-
 type internal ConnectionPool<'TConnection> = {
     PoolName: string
     OpenConnection: unit -> 'TConnection
@@ -107,13 +69,15 @@ type internal StepResponse = {
     LatencyMs: int
 }
 
+type internal LoadTimeLineItem = { EndTime: TimeSpan; LoadSimulation: LoadSimulation }
+type internal LoadTimeLine = LoadTimeLineItem list
+
 type internal Scenario = {
     ScenarioName: ScenarioName
     TestInit: (ScenarioContext -> Task) option
     TestClean: (ScenarioContext -> Task) option
     Steps: Step[]
-    ConcurrentCopies: int
-    CorrelationIds: CorrelationId[]
+    LoadTimeLine: LoadTimeLine
     WarmUpDuration: TimeSpan
     Duration: TimeSpan
 }

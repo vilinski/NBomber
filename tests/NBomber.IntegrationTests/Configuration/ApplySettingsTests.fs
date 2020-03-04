@@ -5,51 +5,48 @@ open System
 open Xunit
 open FsCheck
 open FsCheck.Xunit
+open Swensen.Unquote
 
 open NBomber.Configuration
 open NBomber.Domain
 open NBomber.FSharp
 
 [<Property>]
-let ``applyScenariosSettings() should override initial settings`` (name: string, warmUpDuration: DateTime, duration: DateTime, concurrentCopies: int) =
+let ``applyScenariosSettings() should override initial settings if the name is matched``
+    (name: string, warmUpDuration: DateTime, duration: DateTime, copiesCount: uint32) =
 
-    (concurrentCopies >= 0) ==> lazy
+    (copiesCount > 0u && duration.TimeOfDay.TotalSeconds > 1.0) ==> lazy
 
-    let settings = { ScenarioName = name; WarmUpDuration = warmUpDuration; Duration = duration; ConcurrentCopies = concurrentCopies }
-    let scenario = Scenario.create name [] |> NBomber.Domain.Scenario.create
+    let settings = {
+        ScenarioName = name
+        WarmUpDuration = warmUpDuration
+        LoadSimulationsSettings = [LoadSimulationSettings.KeepConcurrentScenarios(int copiesCount, during = duration)]
+    }
 
-    let updatedScenarios = Scenario.applySettings [|settings|] [|scenario|]
+    let originalScenario = Scenario.create name [] |> NBomber.Domain.Scenario.create
+    let updatedScenarios = Scenario.applySettings [|settings|] [|originalScenario|]
+    let newDuration = updatedScenarios.[0].LoadTimeLine |> List.head
 
-    let result = updatedScenarios.[0].Duration = duration.TimeOfDay
-                 && updatedScenarios.[0].WarmUpDuration = warmUpDuration.TimeOfDay
-                 && updatedScenarios.[0].ConcurrentCopies = concurrentCopies
-                 && updatedScenarios.[0].CorrelationIds.Length = concurrentCopies
-
-    Assert.True(result)
+    test <@ updatedScenarios.[0].Duration = newDuration.EndTime @>
+    test <@ updatedScenarios.[0].WarmUpDuration = settings.WarmUpDuration.TimeOfDay @>
 
 [<Property>]
-let ``applyScenariosSettings() should skip applying settings when scenario name is not found`` (name: string, warmUpDuration: DateTime, duration: DateTime, concurrentCopies: int, threadCount: int) =
-    let settings = { ScenarioName = name; WarmUpDuration = warmUpDuration; Duration = duration; ConcurrentCopies = concurrentCopies }
+let ``applyScenariosSettings() should skip applying settings when scenario name is not found``
+    (name: string, warmUpDuration: DateTime, duration: DateTime, copiesCount: uint32) =
+
+    let settings = {
+        ScenarioName = name
+        WarmUpDuration = warmUpDuration
+        LoadSimulationsSettings = [LoadSimulationSettings.RampConcurrentScenarios(int copiesCount, during = duration)]
+    }
+
     let newName = name + "_new_name"
-    let scenario = Scenario.create newName [] |> NBomber.Domain.Scenario.create
+    let originalScenario = Scenario.create newName [] |> NBomber.Domain.Scenario.create
 
-    let updatedScenarios = Scenario.applySettings [|settings|] [|scenario|]
+    let updatedScenario = Scenario.applySettings [|settings|] [|originalScenario|]
 
-    let result = updatedScenarios.[0].Duration = TimeSpan.FromSeconds(Constants.DefaultScenarioDurationInSec)
-                 && updatedScenarios.[0].ConcurrentCopies = Constants.DefaultConcurrentCopies
-
-    Assert.True(result)
-
-[<Fact>]
-let ``applyScenariosSettings() should make no changes if settings absent`` () =
-    let scenario = Scenario.create "scenario name" [] |> NBomber.Domain.Scenario.create
-    let settings = Array.empty
-    let updatedScenarios = Scenario.applySettings settings [|scenario|]
-
-    let result = updatedScenarios.[0].Duration = TimeSpan.FromSeconds(Constants.DefaultScenarioDurationInSec)
-                 && updatedScenarios.[0].ConcurrentCopies = Constants.DefaultConcurrentCopies
-
-    Assert.True(result)
+    test <@ updatedScenario.[0].Duration = originalScenario.Duration @>
+    test <@ updatedScenario.[0].WarmUpDuration = originalScenario.WarmUpDuration @>
 
 [<Fact>]
 let ``applyScenariosSettings() with no Scenarios should return empty array`` () =

@@ -23,7 +23,7 @@ let run () =
     //let data = FeedData.fromJson<User>("users_feed_data.json")
     //let data = FeedData.fromCsv<User>("users_feed_data.csv")
 
-    let feed = Feed.createCircular "numbers" data
+    let feed = Feed.createConstant "numbers" data
     //let feed = Feed.createConstant "numbers" data
     //let feed = Feed.createRandom "numbers" data
 
