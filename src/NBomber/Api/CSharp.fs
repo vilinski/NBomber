@@ -16,7 +16,7 @@ type ConnectionPool =
 
     static member Create<'TConnection>(name: string,
                                        connectionsCount: int,
-                                       openConnection: Func<'TConnection>,
+                                       openConnection: Func<int,'TConnection>,
                                        [<Optional;DefaultParameterValue(null:obj)>] closeConnection: Action<'TConnection>) =
 
         let close = if isNull closeConnection then (Action<'TConnection>(ignore))

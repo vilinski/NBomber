@@ -9,7 +9,7 @@ let toUntypedPool (pool: Contracts.IConnectionPool<'TConnection>) =
 
     let p = pool :?> ConnectionPool<'TConnection>
 
-    let newOpen = fun () -> p.OpenConnection() :> obj
+    let newOpen = fun (i) -> p.OpenConnection(i) :> obj
 
     let newClose =
         match p.CloseConnection with
@@ -46,7 +46,7 @@ let init (scenario: Scenario,
         onStartedInitPool(pool.PoolName, connectionCount)
 
         let connections = Array.init connectionCount (fun i ->
-            let connection = pool.OpenConnection()
+            let connection = pool.OpenConnection(i)
             onConnectionOpened(i)
             connection
         )

@@ -20,7 +20,7 @@ type ConnectionPool =
 
     static member create(name: string,
                          connectionsCount: int,
-                         openConnection: unit -> 'TConnection,
+                         openConnection: int -> 'TConnection,
                          ?closeConnection: 'TConnection -> unit) =
 
         { ConnectionPool.PoolName = name

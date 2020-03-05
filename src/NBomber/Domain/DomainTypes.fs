@@ -15,7 +15,7 @@ type internal Latency = int
 
 type internal ConnectionPool<'TConnection> = {
     PoolName: string
-    OpenConnection: unit -> 'TConnection
+    OpenConnection: int -> 'TConnection
     CloseConnection: ('TConnection -> unit) option
     ConnectionsCount: int
     AliveConnections: 'TConnection[]
@@ -26,7 +26,7 @@ type internal ConnectionPool<'TConnection> = {
 [<CustomEquality; NoComparison>]
 type internal UntypedConnectionPool = {
     PoolName: string
-    OpenConnection: unit -> obj
+    OpenConnection: int -> obj
     CloseConnection: (obj -> unit) option
     ConnectionsCount: int
     AliveConnections: obj[]
