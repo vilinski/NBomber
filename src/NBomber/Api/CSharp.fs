@@ -144,3 +144,17 @@ type NBomberRunner =
         match FSharp.NBomberRunner.runTest(context) with
         | Ok stats  -> stats
         | Error msg -> failwith msg
+
+type Simulation =
+
+    static member KeepConcurrentScenarios(copiesCount: int, during: TimeSpan) =
+        LoadSimulation.KeepConcurrentScenarios(copiesCount, during)
+
+    static member RampConcurrentScenarios(copiesCount: int, during: TimeSpan) =
+        LoadSimulation.RampConcurrentScenarios(copiesCount, during)
+
+    static member InjectScenariosPerSec(copiesCount: int, during: TimeSpan) =
+        LoadSimulation.InjectScenariosPerSec(copiesCount, during)
+
+    static member RampScenariosPerSec(copiesCount: int, during: TimeSpan) =
+        LoadSimulation.RampScenariosPerSec(copiesCount, during)

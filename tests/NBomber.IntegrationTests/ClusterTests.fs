@@ -63,7 +63,7 @@ let private scenario =
     Scenario.create "test_scenario" [okStep]
     |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 1.0)
     |> Scenario.withLoadSimulations [
-        LoadSimulation.KeepConcurrentScenarios(copiesCount = 20, during = TimeSpan.FromSeconds 1.0)
+        KeepConcurrentScenarios(copiesCount = 20, during = TimeSpan.FromSeconds 1.0)
     ]
     |> NBomber.Domain.Scenario.create
 
@@ -293,7 +293,7 @@ let ``Agent should run test only under their agent group`` () = async {
     let scenario =
         Scenario.create "test_scenario" [okStep]
         |> Scenario.withLoadSimulations [
-            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
+            KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
         ]
         |> NBomber.Domain.Scenario.create
 
@@ -339,7 +339,7 @@ let ``Coordinator and Agent should run tests only from TargetScenarios`` () = as
     let scenario_111 =
         Scenario.create "test_scenario_111" [okStep]
         |> Scenario.withLoadSimulations [
-            LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
+            KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 1.0)
         ]
         |> NBomber.Domain.Scenario.create
 

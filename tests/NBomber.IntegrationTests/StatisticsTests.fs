@@ -18,7 +18,7 @@ let private scenario = {
     TestInit = None
     TestClean = None
     Steps = Array.empty
-    LoadSimulations = [| LoadSimulation.KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds(1.0)) |]
+    LoadSimulations = [| KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds(1.0)) |]
     WarmUpDuration = TimeSpan.FromSeconds(1.0)
 }
 

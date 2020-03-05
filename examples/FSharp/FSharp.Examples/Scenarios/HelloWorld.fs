@@ -26,7 +26,7 @@ let run () =
 
     let scenario = Scenario.create "Hello World!" [step1; step2]
                    |> Scenario.withLoadSimulations [
-                       LoadSimulation.KeepConcurrentScenarios(copiesCount = 10, during = TimeSpan.FromSeconds(20.0))
+                       KeepConcurrentScenarios(copiesCount = 10, during = TimeSpan.FromSeconds(20.0))
                    ]
 
     NBomberRunner.registerScenarios [scenario]

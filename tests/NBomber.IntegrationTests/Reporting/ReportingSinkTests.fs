@@ -27,7 +27,7 @@ let ``IReportingSink.SaveStatistics should be invoked many times during test exe
         Scenario.create "realtime stats scenario" [okStep]
         |> Scenario.withOutWarmUp
         |> Scenario.withLoadSimulations [
-            LoadSimulation.KeepConcurrentScenarios(copiesCount = 5, during = TimeSpan.FromSeconds 15.0)
+            KeepConcurrentScenarios(copiesCount = 5, during = TimeSpan.FromSeconds 15.0)
         ]
 
     let mutable statsInvokedCounter = 0
@@ -65,7 +65,7 @@ let ``IReportingSink.SaveStatistics should be invoked with correct operation typ
         Scenario.create "realtime stats scenario" [okStep]
         |> Scenario.withOutWarmUp
         |> Scenario.withLoadSimulations [
-            LoadSimulation.KeepConcurrentScenarios(copiesCount = 5, during = TimeSpan.FromSeconds 8.0)
+            KeepConcurrentScenarios(copiesCount = 5, during = TimeSpan.FromSeconds 8.0)
         ]
 
     let mutable bombingCounter = 0

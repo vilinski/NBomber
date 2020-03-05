@@ -64,7 +64,7 @@ namespace CSharp.Examples.Scenarios
                 .WithOutWarmUp()
                 .WithLoadSimulations(new[]
                 {
-                    LoadSimulation.NewKeepConcurrentScenarios(concurrentCopies, TimeSpan.FromSeconds(10))
+                    Simulation.KeepConcurrentScenarios(concurrentCopies, during: TimeSpan.FromSeconds(10))
                 });
 
             NBomberRunner.RegisterScenarios(scenario)

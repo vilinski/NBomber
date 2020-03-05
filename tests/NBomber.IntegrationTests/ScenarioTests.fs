@@ -31,7 +31,7 @@ let ``withTestClean should be invoked only once and not fail runner`` () =
         |> Scenario.withTestClean testClean
         |> Scenario.withOutWarmUp
         |> Scenario.withLoadSimulations [
-            LoadSimulation.KeepConcurrentScenarios(2,  TimeSpan.FromSeconds(1.0))
+            KeepConcurrentScenarios(2,  TimeSpan.FromSeconds(1.0))
         ]
 
     let allStats =

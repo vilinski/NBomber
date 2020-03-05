@@ -29,7 +29,7 @@ namespace CSharp.Examples.NUnit
                 .WithOutWarmUp()
                 .WithLoadSimulations(new[]
                 {
-                    LoadSimulation.NewKeepConcurrentScenarios(1, TimeSpan.FromSeconds(2))
+                    Simulation.KeepConcurrentScenarios(copiesCount: 1, during: TimeSpan.FromSeconds(2))
                 });
 
             var allStats = NBomberRunner.RegisterScenarios(scenario).RunTest();

@@ -28,7 +28,7 @@ let run () =
 
     let scenario = Scenario.create "test_nbomber" [step]
                    |> Scenario.withLoadSimulations [
-                       LoadSimulation.KeepConcurrentScenarios(100, TimeSpan.FromMinutes 1.0)
+                       KeepConcurrentScenarios(100, TimeSpan.FromMinutes 1.0)
                    ]
 
     NBomberRunner.registerScenarios [scenario]
