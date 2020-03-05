@@ -20,7 +20,7 @@ namespace CSharp.Examples.Scenarios
             var webSocketsPool = ConnectionPool.Create(
                 name: "webSocketsPool",
                 connectionsCount: concurrentCopies,
-                openConnection: () =>
+                openConnection: (number) =>
                 {
                     var ws = new ClientWebSocket();
                     ws.ConnectAsync(new Uri(url), CancellationToken.None).Wait();
