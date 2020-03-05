@@ -10,9 +10,9 @@ open NBomber.FSharp
 
 [<Fact>]
 let ``NBomberConfig.parse() should read json file successfully`` () =
-    "Configuration/config.json"
-    |> File.ReadAllText
-    |> TestConfig.parse
+    "Configuration/config.json" |> File.ReadAllText |> TestConfig.parse |> ignore
+    "Configuration/agent_config.json" |> File.ReadAllText |> TestConfig.parse |> ignore
+    "Configuration/coordinator_config.json" |> File.ReadAllText |> TestConfig.parse |> ignore
 
 [<Fact>]
 let ``NBomberConfig.parse() should throw ex if mandatory json fields are missing`` () =

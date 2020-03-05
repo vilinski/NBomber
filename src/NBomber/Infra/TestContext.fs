@@ -20,12 +20,12 @@ let empty =
 
 let getTestSuite (context: TestContext) =
     context.TestConfig
-    |> Option.map(fun x -> x.TestSuite)
+    |> Option.bind(fun x -> x.TestSuite)
     |> Option.defaultValue context.TestSuite
 
 let getTestName (context: TestContext) =
     context.TestConfig
-    |> Option.map(fun x -> x.TestName)
+    |> Option.bind(fun x -> x.TestName)
     |> Option.defaultValue context.TestName
 
 let getScenariosSettings (context: TestContext) =

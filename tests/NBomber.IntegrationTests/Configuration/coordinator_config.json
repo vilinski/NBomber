@@ -1,0 +1,35 @@
+﻿{
+  "TestSuite": "http tests",
+  "TestName": "simple cluster http test",
+
+  "GlobalSettings": {
+    "ScenariosSettings": [
+      {
+          "ScenarioName": "simple http scenario",
+          "WarmUpDuration": "00:00:30",
+
+          "LoadSimulationsSettings": [
+              { "KeepConcurrentScenarios": [5, "00:00:05"] },
+              { "RampConcurrentScenarios": [5, "00:00:05"] },
+              { "InjectScenariosPerSec": [5, "00:00:05"] },
+              { "RampScenariosPerSec": [5, "00:00:05"] }
+          ]
+      }
+    ]
+  },
+
+  "ClusterSettings": {
+    "Coordinator": {
+      "ClusterId": "test_cluster",
+      "TargetScenarios": [ "simple http scenario" ],
+      "MqttServer": "localhost",
+
+      "Agents": [
+        {
+          "TargetGroup": "1",
+          "TargetScenarios": [ "simple http scenario" ]
+        }
+      ]
+    }
+  }
+}

@@ -60,8 +60,12 @@ namespace CSharp.Examples.Scenarios
             });
 
             var scenario = ScenarioBuilder
-                .CreateScenario("web_socket test", new[] { pingStep, pongStep })
-                .WithConcurrentCopies(concurrentCopies);
+                .CreateScenario("web_socket test", new[] {pingStep, pongStep})
+                .WithOutWarmUp()
+                .WithLoadSimulations(new[]
+                {
+                    LoadSimulation.NewKeepConcurrentScenarios(concurrentCopies, TimeSpan.FromSeconds(10))
+                });
 
             NBomberRunner.RegisterScenarios(scenario)
                          .RunInConsole();

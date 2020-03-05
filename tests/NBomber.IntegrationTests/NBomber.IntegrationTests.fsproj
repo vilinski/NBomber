@@ -18,6 +18,12 @@
     <Content Include="Configuration\infra_config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <None Include="Configuration\agent_config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Configuration\coordinator_config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="TestContextTests.fs" />
     <Compile Include="Response.fs" />
     <Compile Include="ScenarioTests.fs" />

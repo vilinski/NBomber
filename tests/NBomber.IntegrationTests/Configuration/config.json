@@ -5,8 +5,8 @@
   "GlobalSettings": {
     "ScenariosSettings": [
       {
-        "ScenarioName": "test_youtube",
-        "WarmUpDuration": "00:00:05",
+          "ScenarioName": "test_youtube",
+          "WarmUpDuration": "00:00:05",
 
           "LoadSimulationsSettings": [
               { "KeepConcurrentScenarios": [5, "00:00:05"] },

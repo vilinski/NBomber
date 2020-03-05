@@ -21,9 +21,10 @@ let tests =
 
     let scenario =
         Scenario.create "expecto hello world" [step1]
-        |> Scenario.withConcurrentCopies 1
-        |> Scenario.withWarmUpDuration(TimeSpan.FromSeconds 0.0)
-        |> Scenario.withDuration(TimeSpan.FromSeconds 2.0)
+        |> Scenario.withOutWarmUp
+        |> Scenario.withLoadSimulations [
+            KeepConcurrentScenarios(copiesCount = 1, during = TimeSpan.FromSeconds 2.0)
+        ]
 
     let result = NBomberRunner.registerScenarios [scenario]
                  |> NBomberRunner.runTest

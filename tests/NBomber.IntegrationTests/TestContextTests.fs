@@ -25,8 +25,8 @@ let scenario = Scenario.create "1" []
                |> Scenario.withOutWarmUp
 
 let config = {
-    TestSuite = Constants.DefaultTestSuite
-    TestName = Constants.DefaultTestName
+    TestSuite = Some Constants.DefaultTestSuite
+    TestName = Some Constants.DefaultTestName
     GlobalSettings = None
     ClusterSettings = None
     CustomSettings = None
@@ -113,11 +113,11 @@ let ``TestContext.getReportFormats should return from GlobalSettings, if empty t
 
 [<Property>]
 let ``TestContext.getTestSuite should return from Config, if empty then from TestContext``
-    (configValue: string option, contextValue: string) =
+    (configValue: string option) =
 
     match configValue with
     | Some value ->
-        let config = { config with TestSuite = value }
+        let config = { config with TestSuite = configValue }
         let ctx = { context with TestConfig = Some config }
         let testSuite = TestContext.getTestSuite(ctx)
         test <@ testSuite = value  @>
@@ -128,11 +128,11 @@ let ``TestContext.getTestSuite should return from Config, if empty then from Tes
 
 [<Property>]
 let ``TestContext.getTestName should return from Config, if empty then from TestContext``
-    (configValue: string option, contextValue: string) =
+    (configValue: string option) =
 
     match configValue with
     | Some value ->
-        let config = { config with TestName = value }
+        let config = { config with TestName = configValue }
         let ctx = { context with TestConfig = Some config }
         let testSuite = TestContext.getTestName(ctx)
         test <@ testSuite = value  @>

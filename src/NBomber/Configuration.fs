@@ -55,8 +55,8 @@ type ClusterSettings =
     | Agent       of AgentSettings
 
 type TestConfig = {
-    TestSuite: string
-    TestName: string
+    TestSuite: string option
+    TestName: string option
     GlobalSettings: GlobalSettings option
     ClusterSettings: ClusterSettings option
     [<JsonField(Transform=typeof<TestConfig.JsonStringTransform>)>]

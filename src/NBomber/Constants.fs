@@ -29,10 +29,10 @@ let EmptyPoolName = "nbomber_empty_pool"
 let EmptyFeedName = "nbomber_empty_feed"
 
 [<Literal>]
-let DefaultTestSuite = "nbomber_test_suite"
+let DefaultTestSuite = "nbomber_default_test_suite_name"
 
 [<Literal>]
-let DefaultTestName = "nbomber_load_test"
+let DefaultTestName = "nbomber_default_test_name"
 
 [<Literal>]
 let MinSendStatsIntervalSec = 10.0

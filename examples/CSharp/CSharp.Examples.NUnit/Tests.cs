@@ -26,9 +26,11 @@ namespace CSharp.Examples.NUnit
         public void Test()
         {
             var scenario = BuildScenario()
-                .WithConcurrentCopies(1)
                 .WithOutWarmUp()
-                .WithDuration(TimeSpan.FromSeconds(2));
+                .WithLoadSimulations(new[]
+                {
+                    LoadSimulation.NewKeepConcurrentScenarios(1, TimeSpan.FromSeconds(2))
+                });
 
             var allStats = NBomberRunner.RegisterScenarios(scenario).RunTest();
             var stepStats = allStats.First(x => x.StepName == "simple step");
