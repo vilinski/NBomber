@@ -55,7 +55,7 @@ let ``ConnectionPool should distribute connection using modulo if connectionPool
 
     let step = Step.create("step", pool, fun context -> task {
 
-        let correctConnection = (copiesCount - 1) % context.CorrelationId.CopyNumber
+        let correctConnection = context.CorrelationId.CopyNumber % connectionCount
 
         if correctConnection <> context.Connection then
             return Response.Fail "distribution is not following mapping by modulo"
